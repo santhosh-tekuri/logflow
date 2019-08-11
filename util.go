@@ -1,11 +1,53 @@
+// Copyright 2019 Santhosh Kumar Tekuri
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
+	"bufio"
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 )
+
+func readConf(r io.Reader) (map[string]string, error) {
+	m := make(map[string]string)
+	br := bufio.NewReader(r)
+	for {
+		l, err := br.ReadString('\n')
+		if strings.HasSuffix(l, "\n") {
+			l = strings.TrimSuffix(l, "\n")
+		}
+		if strings.TrimSpace(l) != "" && l[0] != '#' {
+			eq := strings.IndexByte(l, '=')
+			if eq == -1 {
+				return nil, err
+			}
+			m[l[:eq]] = l[eq+1:]
+		}
+		if err != nil {
+			if err != io.EOF {
+				return nil, err
+			}
+			return m, nil
+		}
+	}
+}
 
 func mkdirs(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -69,4 +111,20 @@ func inode(name string) uint64 {
 		panic(err)
 	}
 	return fi.Sys().(*syscall.Stat_t).Ino
+}
+
+func fileExists(name string) bool {
+	_, err := os.Stat(name)
+	if err != nil {
+		return !os.IsNotExist(err)
+	}
+	return true
+}
+
+func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
+	m := make(map[string]interface{})
+	if err := json.Unmarshal(line, &m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }

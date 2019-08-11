@@ -1,7 +1,23 @@
+// Copyright 2019 Santhosh Kumar Tekuri
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -54,8 +70,24 @@ func (c *collector) add(kfile string) {
 	c.dfiles[p.dfile] = p
 	c.kfiles[p.kfile] = p
 
+	k8s := filepath.Join(p.dir, "k8s")
+	if !fileExists(k8s) {
+		m := p.fetchMetadata()
+		b, err := json.Marshal(m)
+		if err != nil {
+			panic(err)
+		}
+		if err := ioutil.WriteFile(k8s, b, 0700); err != nil {
+			panic(err)
+		}
+	}
+
 	c.watch(filepath.Dir(p.dfile))
 	p.save()
+
+	if strings.HasPrefix(filepath.Base(p.dir), "counter") {
+		go parseLogs(p.dir)
+	}
 }
 
 func (c *collector) terminated(kfile string) {
@@ -68,6 +100,12 @@ func (c *collector) terminated(kfile string) {
 		panic(err)
 	}
 	_ = f.Close()
+	logs := getLogFiles(p.dir)
+	next := nextLogFile(logs[len(logs)-1])
+	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
+		panic(err)
+	}
+
 	c.unwatch(filepath.Dir(p.dfile))
 	delete(c.kfiles, p.kfile)
 	delete(c.dfiles, p.dfile)

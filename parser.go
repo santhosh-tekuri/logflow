@@ -1,0 +1,189 @@
+// Copyright 2019 Santhosh Kumar Tekuri
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"time"
+)
+
+func parseLogs(dir string) {
+	logs := getLogFiles(dir)
+	if len(logs) == 0 {
+		os.RemoveAll(dir)
+		return
+	}
+	r, err := os.Open(logs[0])
+	if err != nil {
+		panic(err)
+	}
+
+	b, err := ioutil.ReadFile(filepath.Join(dir, "k8s"))
+	if err != nil {
+		panic(err)
+	}
+	k8s, err := jsonUnmarshal(b)
+	if err != nil {
+		panic(err)
+	}
+	a8n := new(annotation)
+	a8n.multi, err = regexp.Compile(`^\[(?P<time>.*?)\] `) // todo: remove this
+	if s, ok := k8s["annotation"]; ok {
+		delete(k8s, "annotation")
+		if err := a8n.unmarshal(s.(string)); err != nil {
+			fmt.Println(err)
+		}
+	}
+
+	//file := filepath.Base(dir) + ".log"
+	var rec map[string]interface{}
+	sendRec := func() {
+		//rec["@file"] = file
+		rec["@k8s"] = k8s
+		b, err := json.Marshal(rec)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("%s\n", string(b))
+		rec = nil
+	}
+
+	nl := newLine()
+	wait := 0 * time.Second
+	pos := int64(0)
+	for {
+		l, err := nl.readFrom(r)
+		var raw rawLog
+		switch err {
+		case io.EOF:
+			if rec != nil && wait >= 5*time.Second {
+				sendRec()
+				continue
+			}
+			next := nextLogFile(r.Name())
+			if fileExists(next) {
+				r.Close()
+				r, err = os.Open(next)
+				if err != nil {
+					panic(err)
+				}
+				pos = 0
+				continue
+			}
+			fmt.Println("Zzzzzz")
+			time.Sleep(time.Second)
+			wait += time.Second
+			continue
+		case nil:
+			pos += int64(len(l) + 1)
+			wait = 0
+			if len(l) == 3 && "END" == string(l) {
+				fmt.Println("finshed", dir)
+				return
+			}
+			raw, err = parseRaw(l)
+			if err != nil {
+				panic(err)
+			}
+			if rec != nil {
+				if a8n.multi.MatchString(raw.msg) {
+					sendRec()
+				} else {
+					rec["@message"] = rec["@message"].(string) + "\n" + raw.msg
+					continue
+				}
+			}
+			rec, err = a8n.parse(raw)
+			if err != nil {
+				fmt.Println(err)
+				break
+			}
+			if a8n.multi == nil {
+				sendRec()
+			}
+		default:
+			panic(err)
+		}
+	}
+}
+
+// line ---
+
+type line struct {
+	buf []byte
+	off int
+}
+
+func newLine() *line {
+	return &line{buf: make([]byte, 0, 8*1024)}
+}
+
+func (l *line) readFrom(r io.Reader) ([]byte, error) {
+	// check if buffer already has line
+	if x := bytes.IndexByte(l.buf[l.off:], '\n'); x != -1 {
+		x += l.off
+		x, l.off = l.off, x+1
+		return l.buf[x : l.off-1], nil
+	}
+
+	for {
+		// make room of reading
+		unread := len(l.buf) - l.off
+		if unread == 0 {
+			l.buf, l.off = l.buf[0:0], 0
+		} else if len(l.buf) == cap(l.buf) {
+			if l.off > 0 {
+				copy(l.buf[0:], l.buf[l.off:])
+			} else {
+				b := make([]byte, 2*cap(l.buf))
+				copy(b, l.buf[l.off:])
+				l.buf = b
+			}
+			l.buf, l.off = l.buf[:unread], 0
+		}
+
+		// read more and check for line
+		i := len(l.buf)
+		n, err := r.Read(l.buf[i:cap(l.buf)])
+		l.buf = l.buf[:i+n]
+		if x := bytes.IndexByte(l.buf[i:], '\n'); x != -1 {
+			x += i
+			x, l.off = l.off, x+1
+			return l.buf[x : l.off-1], nil
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+
+func (l *line) buffer() []byte {
+	return l.buf[l.off:]
+}
+
+// ---
+
+func nextLogFile(name string) string {
+	i := extInt(name)
+	return filepath.Join(filepath.Dir(name), "log."+strconv.Itoa(i+1))
+}
