@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -148,12 +147,12 @@ func extInt(name string) int {
 	return i
 }
 
-func inode(name string) uint64 {
+func stat(name string) os.FileInfo {
 	fi, err := os.Stat(name)
 	if err != nil {
 		panic(err)
 	}
-	return fi.Sys().(*syscall.Stat_t).Ino
+	return fi
 }
 
 func fileExists(name string) bool {

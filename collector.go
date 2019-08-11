@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -29,9 +30,11 @@ import (
 type collector struct {
 	watcher *fsnotify.Watcher
 	kfiles  map[string]*pod
-	dfiles  map[string]*pod
 	records chan<- record
 	wg      sync.WaitGroup
+
+	mu     sync.RWMutex
+	dfiles map[string]*pod
 }
 
 func openCollector(records chan<- record) *collector {
@@ -55,13 +58,8 @@ func (c *collector) close() error {
 }
 
 func (c *collector) watch(name string) {
+	fmt.Println("watch", name)
 	if err := c.watcher.Add(name); err != nil {
-		panic(err)
-	}
-}
-
-func (c *collector) unwatch(name string) {
-	if err := c.watcher.Remove(name); err != nil {
 		panic(err)
 	}
 }
@@ -75,13 +73,17 @@ func (c *collector) add(kfile string) {
 		c.runParser(dir)
 		return
 	}
+	dfile := readLinks(kfile)
 	p := &pod{
 		kfile: kfile,
-		dfile: readLinks(kfile),
+		dfile: dfile,
+		dfi:   stat(dfile),
 		dir:   dir,
 	}
 	mkdirs(p.dir)
+	c.mu.Lock()
 	c.dfiles[p.dfile] = p
+	c.mu.Unlock()
 	c.kfiles[p.kfile] = p
 
 	k8s := filepath.Join(p.dir, ".k8s")
@@ -112,6 +114,12 @@ func (c *collector) runParser(dir string) {
 
 func (c *collector) markTerminated(dir string) {
 	logs := getLogFiles(dir)
+	if len(logs) == 0 {
+		if err := os.RemoveAll(dir); err != nil {
+			fmt.Println(err)
+		}
+		return
+	}
 	next := nextLogFile(logs[len(logs)-1])
 	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
 		panic(err)
@@ -129,25 +137,62 @@ func (c *collector) terminated(kfile string) {
 		panic("pod not found for " + kfile)
 	}
 	c.markTerminated(p.dir)
-	c.unwatch(filepath.Dir(p.dfile))
+	//c.unwatch(filepath.Dir(p.dfile))
 	delete(c.kfiles, p.kfile)
+	c.mu.Lock()
 	delete(c.dfiles, p.dfile)
+	c.mu.Unlock()
 }
 
-func (c *collector) run() {
+func (c *collector) watchDFiles(ch chan<- *pod) {
 	for {
 		select {
 		case <-exitCh:
 			return
+		case <-time.After(250 * time.Millisecond):
+			c.mu.RLock()
+			// fmt.Println("checking...")
+			for name, p := range c.dfiles {
+				fi, err := os.Stat(name)
+				if err != nil {
+					fmt.Println(err)
+					continue
+				}
+				if !os.SameFile(p.dfi, fi) {
+					p.dfi = fi
+					// fmt.Println(name, "file rotated")
+					ch <- p
+					// fmt.Println(name, "file rotated notified")
+				}
+			}
+			c.mu.RUnlock()
+		}
+	}
+}
+
+func (c *collector) run() {
+	ch := make(chan *pod)
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		c.watchDFiles(ch)
+	}()
+	for {
+		select {
+		case <-exitCh:
+			return
+		case p := <-ch:
+			p.save()
 		case event := <-c.watcher.Events:
 			switch event.Op {
 			case fsnotify.Create:
 				if kfile(event.Name) {
 					fmt.Println(event)
 					c.add(event.Name)
-				} else if p, ok := c.dfiles[event.Name]; ok {
-					p.save()
 				}
+				//  else if p, ok := c.dfiles[event.Name]; ok {
+				// 	p.save()
+				// }
 			case fsnotify.Remove:
 				if kfile(event.Name) {
 					fmt.Println(event)

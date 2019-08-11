@@ -34,6 +34,7 @@ var (
 type pod struct {
 	kfile string
 	dfile string
+	dfi   os.FileInfo
 	dir   string
 }
 
