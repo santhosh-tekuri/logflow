@@ -20,9 +20,13 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/santhosh-tekuri/logflow/kubectl"
 )
+
+var a8nLabel = "logflow.io/conf"
+var dotAlt = "_"
 
 type pod struct {
 	kfile string
@@ -67,9 +71,18 @@ func (p *pod) fetchMetadata() map[string]interface{} {
 		fmt.Println(err)
 		return k8s
 	}
+	if dotAlt != "" {
+		for k, v := range pod.Metadata.Labels {
+			nk := strings.ReplaceAll(k, ".", dotAlt[:1])
+			if k != nk {
+				delete(pod.Metadata.Labels, k)
+				pod.Metadata.Labels[nk] = v
+			}
+		}
+	}
 	k8s["labels"] = pod.Metadata.Labels
 	k8s["nodename"] = pod.Spec.NodeName
-	if s, ok := pod.Metadata.Annotations["logflow.io/conf"]; ok {
+	if s, ok := pod.Metadata.Annotations[a8nLabel]; ok {
 		k8s["annotation"] = s
 	}
 	return k8s

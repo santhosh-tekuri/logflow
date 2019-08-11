@@ -69,7 +69,6 @@ func (c *collector) unwatch(name string) {
 func (c *collector) add(kfile string) {
 	dir := filepath.Join(qdir, strings.TrimSuffix(filepath.Base(kfile), ".log"))
 	if !fileExists(kfile) {
-		fmt.Println("xxxxxxxxx", kfile)
 		if !fileExists(filepath.Join(dir, ".terminated")) {
 			c.markTerminated(dir)
 		}
@@ -147,7 +146,6 @@ func (c *collector) run() {
 					fmt.Println(event)
 					c.add(event.Name)
 				} else if p, ok := c.dfiles[event.Name]; ok {
-					fmt.Println("xxx", inode(event.Name), p.kfile, event.Op)
 					p.save()
 				}
 			case fsnotify.Remove:
