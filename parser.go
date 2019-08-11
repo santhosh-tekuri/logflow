@@ -22,7 +22,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"time"
 )
@@ -64,14 +63,17 @@ func parseLogs(dir string, records chan<- record) {
 	// read .k18
 	b, err = ioutil.ReadFile(filepath.Join(dir, ".k8s"))
 	if err != nil {
-		panic(err)
+		b, err = ioutil.ReadFile(filepath.Join(dir, "k8s"))
+		if err != nil {
+			b = []byte("{}")
+			//panic(err)
+		}
 	}
 	k8s, err := jsonUnmarshal(b)
 	if err != nil {
 		panic(err)
 	}
 	a8n := new(annotation)
-	a8n.multi, err = regexp.Compile(`^\[(?P<time>.*?)\] `) // todo: remove this
 	if s, ok := k8s["annotation"]; ok {
 		delete(k8s, "annotation")
 		if err := a8n.unmarshal(s.(string)); err != nil {

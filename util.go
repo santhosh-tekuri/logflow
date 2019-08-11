@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,6 +54,20 @@ func mkdirs(dir string) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		panic(err)
 	}
+}
+
+func subdirs(dir string) []string {
+	ff, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+	var subdirs []string
+	for _, f := range ff {
+		if f.IsDir() {
+			subdirs = append(subdirs, f.Name())
+		}
+	}
+	return subdirs
 }
 
 func glob(dir, pat string) []string {

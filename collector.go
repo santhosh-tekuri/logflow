@@ -67,10 +67,19 @@ func (c *collector) unwatch(name string) {
 }
 
 func (c *collector) add(kfile string) {
+	dir := filepath.Join(qdir, strings.TrimSuffix(filepath.Base(kfile), ".log"))
+	if !fileExists(kfile) {
+		fmt.Println("xxxxxxxxx", kfile)
+		if !fileExists(filepath.Join(dir, ".terminated")) {
+			c.markTerminated(dir)
+		}
+		c.runParser(dir)
+		return
+	}
 	p := &pod{
 		kfile: kfile,
 		dfile: readLinks(kfile),
-		dir:   filepath.Join(qdir, strings.TrimSuffix(filepath.Base(kfile), ".log")),
+		dir:   dir,
 	}
 	mkdirs(p.dir)
 	c.dfiles[p.dfile] = p
@@ -90,15 +99,29 @@ func (c *collector) add(kfile string) {
 
 	c.watch(filepath.Dir(p.dfile))
 	p.save()
+	c.runParser(p.dir)
+}
 
-	if strings.HasPrefix(filepath.Base(p.dir), "counter") {
-		c.wg.Add(1)
-		go func() {
-			defer c.wg.Done()
-			defer fmt.Println("parser", p.dir, "exited")
-			parseLogs(p.dir, c.records)
-		}()
+func (c *collector) runParser(dir string) {
+	c.wg.Add(1)
+	go func() {
+		defer c.wg.Done()
+		defer fmt.Println("parser", dir, "exited")
+		parseLogs(dir, c.records)
+	}()
+}
+
+func (c *collector) markTerminated(dir string) {
+	logs := getLogFiles(dir)
+	next := nextLogFile(logs[len(logs)-1])
+	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
+		panic(err)
 	}
+	f, err := os.Create(filepath.Join(dir, ".terminated"))
+	if err != nil {
+		panic(err)
+	}
+	_ = f.Close()
 }
 
 func (c *collector) terminated(kfile string) {
@@ -106,17 +129,7 @@ func (c *collector) terminated(kfile string) {
 	if !ok {
 		panic("pod not found for " + kfile)
 	}
-	f, err := os.Create(filepath.Join(p.dir, ".terminated"))
-	if err != nil {
-		panic(err)
-	}
-	_ = f.Close()
-	logs := getLogFiles(p.dir)
-	next := nextLogFile(logs[len(logs)-1])
-	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
-		panic(err)
-	}
-
+	c.markTerminated(p.dir)
 	c.unwatch(filepath.Dir(p.dfile))
 	delete(c.kfiles, p.kfile)
 	delete(c.dfiles, p.dfile)

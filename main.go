@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 )
@@ -42,12 +43,13 @@ func main() {
 	c := openCollector(r.records)
 	defer c.close()
 	c.watch(kdir)
+	for _, dir := range subdirs(qdir) {
+		base := filepath.Base(dir)
+		c.add(filepath.Join(kdir, base+".log"))
+	}
 	for _, m := range glob(kdir, "*.log") {
 		c.add(m)
 	}
-
-	// todo: handle the code qdir has logs, but container
-	// exited already when logflow was not running
 
 	wg.Add(1)
 	go func() {
