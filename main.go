@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 const kdir = "/var/log/containers/"
@@ -42,15 +44,6 @@ func main() {
 
 	c := openCollector(r.records)
 	defer c.close()
-	c.watch(kdir)
-	for _, dir := range subdirs(qdir) {
-		base := filepath.Base(dir)
-		c.add(filepath.Join(kdir, base+".log"))
-	}
-	for _, m := range glob(kdir, "*.log") {
-		c.add(m)
-	}
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -58,9 +51,54 @@ func main() {
 		c.run()
 	}()
 
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		watchKDir(c)
+	}()
+
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	<-ch
 	close(exitCh)
 	wg.Wait()
+}
+
+func watchKDir(c *collector) {
+	w, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer w.Close()
+	if err := w.Add(kdir); err != nil {
+		panic(err)
+	}
+	for _, dir := range subdirs(qdir) {
+		base := filepath.Base(dir)
+		c.add(filepath.Join(kdir, base+".log"))
+	}
+	for _, m := range glob(kdir, "*.log") {
+		c.add(m)
+	}
+	for {
+		select {
+		case <-exitCh:
+			return
+		case event := <-w.Events:
+			switch event.Op {
+			case fsnotify.Create:
+				if kfile(event.Name) {
+					fmt.Println(event)
+					c.add(event.Name)
+				}
+			case fsnotify.Remove:
+				if kfile(event.Name) {
+					fmt.Println(event)
+					c.terminated(event.Name)
+				}
+			}
+		case err := <-w.Errors:
+			fmt.Println(err)
+		}
+	}
 }

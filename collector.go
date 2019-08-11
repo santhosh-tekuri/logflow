@@ -23,12 +23,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/fsnotify/fsnotify"
 )
 
 type collector struct {
-	watcher *fsnotify.Watcher
 	kfiles  map[string]*pod
 	records chan<- record
 	wg      sync.WaitGroup
@@ -38,12 +35,7 @@ type collector struct {
 }
 
 func openCollector(records chan<- record) *collector {
-	fw, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic(err)
-	}
 	w := &collector{
-		watcher: fw,
 		kfiles:  make(map[string]*pod),
 		dfiles:  make(map[string]*pod),
 		records: records,
@@ -51,17 +43,8 @@ func openCollector(records chan<- record) *collector {
 	return w
 }
 
-func (c *collector) close() error {
-	err := c.watcher.Close()
+func (c *collector) close() {
 	c.wg.Wait()
-	return err
-}
-
-func (c *collector) watch(name string) {
-	fmt.Println("watch", name)
-	if err := c.watcher.Add(name); err != nil {
-		panic(err)
-	}
 }
 
 func (c *collector) add(kfile string) {
@@ -98,7 +81,6 @@ func (c *collector) add(kfile string) {
 		}
 	}
 
-	c.watch(filepath.Dir(p.dfile))
 	p.save()
 	c.runParser(p.dir)
 }
@@ -144,7 +126,7 @@ func (c *collector) terminated(kfile string) {
 	c.mu.Unlock()
 }
 
-func (c *collector) watchDFiles(ch chan<- *pod) {
+func (c *collector) run() {
 	for {
 		select {
 		case <-exitCh:
@@ -161,46 +143,11 @@ func (c *collector) watchDFiles(ch chan<- *pod) {
 				if !os.SameFile(p.dfi, fi) {
 					p.dfi = fi
 					// fmt.Println(name, "file rotated")
-					ch <- p
+					p.save()
 					// fmt.Println(name, "file rotated notified")
 				}
 			}
 			c.mu.RUnlock()
-		}
-	}
-}
-
-func (c *collector) run() {
-	ch := make(chan *pod)
-	c.wg.Add(1)
-	go func() {
-		defer c.wg.Done()
-		c.watchDFiles(ch)
-	}()
-	for {
-		select {
-		case <-exitCh:
-			return
-		case p := <-ch:
-			p.save()
-		case event := <-c.watcher.Events:
-			switch event.Op {
-			case fsnotify.Create:
-				if kfile(event.Name) {
-					fmt.Println(event)
-					c.add(event.Name)
-				}
-				//  else if p, ok := c.dfiles[event.Name]; ok {
-				// 	p.save()
-				// }
-			case fsnotify.Remove:
-				if kfile(event.Name) {
-					fmt.Println(event)
-					c.terminated(event.Name)
-				}
-			}
-		case err := <-c.watcher.Errors:
-			fmt.Println(err)
 		}
 	}
 }
