@@ -15,6 +15,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -28,21 +29,36 @@ var exitCh = make(chan struct{})
 
 func main() {
 	mkdirs(qdir)
-	c := openCollector()
+
+	var wg sync.WaitGroup
+	r := newRecords()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer fmt.Println("exporter exited")
+		export(r)
+	}()
+
+	c := openCollector(r.records)
 	defer c.close()
 	c.watch(kdir)
 	for _, m := range glob(kdir, "*.log") {
 		c.add(m)
 	}
 
-	var wg sync.WaitGroup
+	// todo: handle the code qdir has logs, but container
+	// exited already when logflow was not running
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer fmt.Println("collector exited")
 		c.run()
 	}()
 
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	<-ch
+	close(exitCh)
+	wg.Wait()
 }

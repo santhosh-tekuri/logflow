@@ -21,6 +21,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -29,9 +30,11 @@ type collector struct {
 	watcher *fsnotify.Watcher
 	kfiles  map[string]*pod
 	dfiles  map[string]*pod
+	records chan<- record
+	wg      sync.WaitGroup
 }
 
-func openCollector() *collector {
+func openCollector(records chan<- record) *collector {
 	fw, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
@@ -40,12 +43,15 @@ func openCollector() *collector {
 		watcher: fw,
 		kfiles:  make(map[string]*pod),
 		dfiles:  make(map[string]*pod),
+		records: records,
 	}
 	return w
 }
 
 func (c *collector) close() error {
-	return c.watcher.Close()
+	err := c.watcher.Close()
+	c.wg.Wait()
+	return err
 }
 
 func (c *collector) watch(name string) {
@@ -70,7 +76,7 @@ func (c *collector) add(kfile string) {
 	c.dfiles[p.dfile] = p
 	c.kfiles[p.kfile] = p
 
-	k8s := filepath.Join(p.dir, "k8s")
+	k8s := filepath.Join(p.dir, ".k8s")
 	if !fileExists(k8s) {
 		m := p.fetchMetadata()
 		b, err := json.Marshal(m)
@@ -86,7 +92,12 @@ func (c *collector) add(kfile string) {
 	p.save()
 
 	if strings.HasPrefix(filepath.Base(p.dir), "counter") {
-		go parseLogs(p.dir)
+		c.wg.Add(1)
+		go func() {
+			defer c.wg.Done()
+			defer fmt.Println("parser", p.dir, "exited")
+			parseLogs(p.dir, c.records)
+		}()
 	}
 }
 

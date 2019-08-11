@@ -27,18 +27,42 @@ import (
 	"time"
 )
 
-func parseLogs(dir string) {
+func parseLogs(dir string, records chan<- record) {
 	logs := getLogFiles(dir)
 	if len(logs) == 0 {
 		os.RemoveAll(dir)
 		return
 	}
-	r, err := os.Open(logs[0])
+	if len(logs) == 1 && fileExists(filepath.Join(dir, ".terminated")) {
+		os.RemoveAll(dir)
+		return
+	}
+	fmt.Println("parsing", dir)
+
+	// init ext & pos
+	ext := extInt(logs[0])
+	pos := int64(0)
+	b, err := ioutil.ReadFile(filepath.Join(dir, ".pos"))
+	if err == nil && len(b) == 16 {
+		i := byteOrder.Uint64(b)
+		j := byteOrder.Uint64(b[8:])
+		ext, pos = int(i), int64(j)
+	}
+
+	// open file & seek
+	f := filepath.Join(dir, fmt.Sprintf("log.%d", ext))
+	r, err := os.Open(f)
 	if err != nil {
 		panic(err)
 	}
+	if pos != 0 {
+		if _, err := r.Seek(pos, io.SeekStart); err != nil {
+			panic(err)
+		}
+	}
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, "k8s"))
+	// read .k18
+	b, err = ioutil.ReadFile(filepath.Join(dir, ".k8s"))
 	if err != nil {
 		panic(err)
 	}
@@ -57,6 +81,7 @@ func parseLogs(dir string) {
 
 	//file := filepath.Base(dir) + ".log"
 	var rec map[string]interface{}
+	var recPos = pos
 	sendRec := func() {
 		//rec["@file"] = file
 		rec["@k8s"] = k8s
@@ -64,13 +89,27 @@ func parseLogs(dir string) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Printf("%s\n", string(b))
+		ts, err := time.Parse(time.RFC3339Nano, rec["@timestamp"].(string))
+		if err != nil {
+			panic(err)
+		}
+		select {
+		case <-exitCh:
+			return
+		case records <- record{
+			dir:  dir,
+			ext:  ext,
+			pos:  recPos,
+			ts:   ts,
+			json: b,
+		}:
+		}
+		//fmt.Printf("%s\n", string(b))
 		rec = nil
 	}
 
 	nl := newLine()
 	wait := 0 * time.Second
-	pos := int64(0)
 	for {
 		l, err := nl.readFrom(r)
 		var raw rawLog
@@ -87,18 +126,30 @@ func parseLogs(dir string) {
 				if err != nil {
 					panic(err)
 				}
-				pos = 0
+				ext++
+				pos, recPos = 0, 0
 				continue
 			}
 			fmt.Println("Zzzzzz")
-			time.Sleep(time.Second)
-			wait += time.Second
-			continue
+			select {
+			case <-exitCh:
+				return
+			case <-time.After(time.Second):
+				wait += time.Second
+				continue
+			}
 		case nil:
 			pos += int64(len(l) + 1)
 			wait = 0
 			if len(l) == 3 && "END" == string(l) {
-				fmt.Println("finshed", dir)
+				select {
+				case <-exitCh:
+					return
+				case records <- record{
+					dir: dir,
+					ext: -1,
+				}:
+				}
 				return
 			}
 			raw, err = parseRaw(l)
@@ -110,6 +161,7 @@ func parseLogs(dir string) {
 					sendRec()
 				} else {
 					rec["@message"] = rec["@message"].(string) + "\n" + raw.msg
+					recPos = pos
 					continue
 				}
 			}
@@ -118,6 +170,7 @@ func parseLogs(dir string) {
 				fmt.Println(err)
 				break
 			}
+			recPos = pos
 			if a8n.multi == nil {
 				sendRec()
 			}
