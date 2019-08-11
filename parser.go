@@ -84,7 +84,7 @@ func parseLogs(dir string, records chan<- record) {
 	//file := filepath.Base(dir) + ".log"
 	var rec map[string]interface{}
 	var recPos = pos
-	sendRec := func() {
+	sendRec := func() (exit bool) {
 		//rec["@file"] = file
 		rec["@k8s"] = k8s
 		b, err := json.Marshal(rec)
@@ -97,7 +97,7 @@ func parseLogs(dir string, records chan<- record) {
 		}
 		select {
 		case <-exitCh:
-			return
+			return true
 		case records <- record{
 			dir:  dir,
 			ext:  ext,
@@ -108,6 +108,7 @@ func parseLogs(dir string, records chan<- record) {
 		}
 		//fmt.Printf("%s\n", string(b))
 		rec = nil
+		return false
 	}
 
 	nl := newLine()
@@ -118,7 +119,9 @@ func parseLogs(dir string, records chan<- record) {
 		switch err {
 		case io.EOF:
 			if rec != nil && wait >= 5*time.Second {
-				sendRec()
+				if exit := sendRec(); exit {
+					return
+				}
 				continue
 			}
 			next := nextLogFile(r.Name())
@@ -132,7 +135,7 @@ func parseLogs(dir string, records chan<- record) {
 				pos, recPos = 0, 0
 				continue
 			}
-			fmt.Println("Zzzzzz")
+			// fmt.Println("Zzzzzz")
 			select {
 			case <-exitCh:
 				return
@@ -160,7 +163,9 @@ func parseLogs(dir string, records chan<- record) {
 			}
 			if rec != nil {
 				if a8n.multi.MatchString(raw.msg) {
-					sendRec()
+					if exit := sendRec(); exit {
+						return
+					}
 				} else {
 					rec["@message"] = rec["@message"].(string) + "\n" + raw.msg
 					recPos = pos
@@ -174,7 +179,9 @@ func parseLogs(dir string, records chan<- record) {
 			}
 			recPos = pos
 			if a8n.multi == nil {
-				sendRec()
+				if exit := sendRec(); exit {
+					return
+				}
 			}
 		default:
 			panic(err)

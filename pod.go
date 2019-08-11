@@ -25,8 +25,11 @@ import (
 	"github.com/santhosh-tekuri/logflow/kubectl"
 )
 
-var a8nLabel = "logflow.io/conf"
-var dotAlt = "_"
+// options
+var (
+	a8nLabel = "logflow.io/conf"
+	dotAlt   = "_"
+)
 
 type pod struct {
 	kfile string
@@ -53,7 +56,7 @@ func (p *pod) save() {
 	}
 }
 
-var namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container>.+)-(?P<docker_id>[a-z0-9]{64})$`)
+var namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
 
 func (p *pod) fetchMetadata() map[string]interface{} {
 	g := namePattern.FindStringSubmatch(filepath.Base(p.dir))

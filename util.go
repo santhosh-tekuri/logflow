@@ -17,6 +17,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -24,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func readConf(r io.Reader) (map[string]string, error) {
@@ -48,6 +50,32 @@ func readConf(r io.Reader) (map[string]string, error) {
 			return m, nil
 		}
 	}
+}
+
+// backOff ---
+
+const (
+	maxFailureScale = 12
+	failureWait     = 10 * time.Millisecond
+)
+
+// backOff is used to compute an exponential backOff
+// duration. Base time is scaled by the current round,
+// up to some maximum scale factor. If backOff exceeds
+// given max, it returns max
+func backOff(round int, max time.Duration) time.Duration {
+	wait := failureWait
+	if round > maxFailureScale {
+		round = maxFailureScale
+	}
+	for round > 2 {
+		wait *= 2
+		round--
+	}
+	if wait > max {
+		return max
+	}
+	return wait
 }
 
 func mkdirs(dir string) {
@@ -142,4 +170,16 @@ func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return m, nil
+}
+
+// logging ---
+
+func info(a ...interface{}) {
+	fmt.Printf("[INFO] ")
+	fmt.Println(a...)
+}
+
+func warn(a ...interface{}) {
+	fmt.Printf("[WARN] ")
+	fmt.Println(a...)
 }
