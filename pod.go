@@ -15,7 +15,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -36,6 +38,20 @@ type pod struct {
 	dfile string
 	dfi   os.FileInfo
 	dir   string
+}
+
+func (p *pod) createK8sFile() {
+	k8s := filepath.Join(p.dir, ".k8s")
+	if !fileExists(k8s) {
+		m := p.fetchMetadata()
+		b, err := json.Marshal(m)
+		if err != nil {
+			panic(err)
+		}
+		if err := ioutil.WriteFile(k8s, b, 0700); err != nil {
+			panic(err)
+		}
+	}
 }
 
 func (p *pod) save() {

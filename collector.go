@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -69,18 +68,7 @@ func (c *collector) add(kfile string) {
 	c.mu.Unlock()
 	c.kfiles[p.kfile] = p
 
-	k8s := filepath.Join(p.dir, ".k8s")
-	if !fileExists(k8s) {
-		m := p.fetchMetadata()
-		b, err := json.Marshal(m)
-		if err != nil {
-			panic(err)
-		}
-		if err := ioutil.WriteFile(k8s, b, 0700); err != nil {
-			panic(err)
-		}
-	}
-
+	p.createK8sFile()
 	p.save()
 	c.runParser(p.dir)
 }
