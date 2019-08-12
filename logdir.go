@@ -27,23 +27,10 @@ import (
 	"github.com/santhosh-tekuri/logflow/kubectl"
 )
 
-// options
-var (
-	a8nLabel = "logflow.io/conf"
-	dotAlt   = "_"
-)
-
-type pod struct {
-	kfile string
-	dfile string
-	dfi   os.FileInfo
-	dir   string
-}
-
-func (p *pod) createK8sFile() {
-	k8s := filepath.Join(p.dir, ".k8s")
+func createMetadataFile(dir string) {
+	k8s := filepath.Join(dir, ".k8s")
 	if !fileExists(k8s) {
-		m := p.fetchMetadata()
+		m := fetchMetadata(filepath.Base(dir))
 		b, err := json.Marshal(m)
 		if err != nil {
 			panic(err)
@@ -54,29 +41,45 @@ func (p *pod) createK8sFile() {
 	}
 }
 
-func (p *pod) save() {
-	logs := getLogFiles(p.dir)
-	lfile, lext := "", -1
-	if len(logs) > 0 {
-		lfile = logs[len(logs)-1]
-		lext = extInt(lfile)
-	}
-	if lfile != "" {
-		if sameFile(p.dfile, lfile) {
-			fmt.Println("same file", p.dfile, lfile)
-			return
+func markTerminated(dir string) {
+	logs := getLogFiles(dir)
+	if len(logs) == 0 {
+		if err := os.RemoveAll(dir); err != nil {
+			fmt.Println(err)
 		}
+		return
 	}
-	fmt.Println("linking", p.dfile)
-	if err := os.Link(p.dfile, filepath.Join(p.dir, fmt.Sprintf("log.%d", lext+1))); err != nil {
+	next := nextLogFile(logs[len(logs)-1])
+	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
 		panic(err)
 	}
+	f, err := os.Create(filepath.Join(dir, ".terminated"))
+	if err != nil {
+		panic(err)
+	}
+	_ = f.Close()
 }
 
-var namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
+func hasLogs(dir string) bool {
+	logs := getLogFiles(dir)
+	if len(logs) == 0 {
+		return false
+	}
+	if len(logs) == 1 && fileExists(filepath.Join(dir, ".terminated")) {
+		return false
+	}
+	return true
+}
 
-func (p *pod) fetchMetadata() map[string]interface{} {
-	g := namePattern.FindStringSubmatch(filepath.Base(p.dir))
+// options
+var (
+	namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
+	a8nLabel    = "logflow.io/conf"
+	dotAlt      = "_"
+)
+
+func fetchMetadata(logName string) map[string]interface{} {
+	g := namePattern.FindStringSubmatch(logName)
 	if len(g) == 0 {
 		return nil
 	}
