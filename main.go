@@ -22,14 +22,9 @@ import (
 	"syscall"
 )
 
-const kdir = "/var/log/containers/"
-const qdir = "/var/log/containers/flow/"
-
 var exitCh = make(chan struct{})
 
 func main() {
-	mkdirs(qdir)
-
 	var wg sync.WaitGroup
 
 	tail := &tail{m: make(map[string]*logRef)}
@@ -51,7 +46,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchContainers(tail, r.records)
+		watchContainers("/var/log/containers/", "/var/log/containers/flow/", tail, r.records)
 	}()
 
 	ch := make(chan os.Signal, 2)
@@ -60,42 +55,3 @@ func main() {
 	close(exitCh)
 	wg.Wait()
 }
-
-// func watchKDir(c *collector) {
-// 	w, err := fsnotify.NewWatcher()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer w.Close()
-// 	if err := w.Add(kdir); err != nil {
-// 		panic(err)
-// 	}
-// 	for _, dir := range subdirs(qdir) {
-// 		base := filepath.Base(dir)
-// 		c.add(filepath.Join(kdir, base+".log"))
-// 	}
-// 	for _, m := range glob(kdir, "*.log") {
-// 		c.add(m)
-// 	}
-// 	for {
-// 		select {
-// 		case <-exitCh:
-// 			return
-// 		case event := <-w.Events:
-// 			switch event.Op {
-// 			case fsnotify.Create:
-// 				if kfile(event.Name) {
-// 					fmt.Println(event)
-// 					c.add(event.Name)
-// 				}
-// 			case fsnotify.Remove:
-// 				if kfile(event.Name) {
-// 					fmt.Println(event)
-// 					c.terminated(event.Name)
-// 				}
-// 			}
-// 		case err := <-w.Errors:
-// 			fmt.Println(err)
-// 		}
-// 	}
-// }

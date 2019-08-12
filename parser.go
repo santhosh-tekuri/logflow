@@ -27,18 +27,10 @@ import (
 )
 
 func parseLogs(dir string, records chan<- record) {
-	logs := getLogFiles(dir)
-	if len(logs) == 0 {
-		os.RemoveAll(dir)
-		return
-	}
-	if len(logs) == 1 && fileExists(filepath.Join(dir, ".terminated")) {
-		os.RemoveAll(dir)
-		return
-	}
 	fmt.Println("parsing", dir)
 
 	// init ext & pos
+	logs := getLogFiles(dir)
 	ext := extInt(logs[0])
 	pos := int64(0)
 	b, err := ioutil.ReadFile(filepath.Join(dir, ".pos"))
@@ -60,7 +52,7 @@ func parseLogs(dir string, records chan<- record) {
 		}
 	}
 
-	// read .k18
+	// read .k8s
 	b, err = ioutil.ReadFile(filepath.Join(dir, ".k8s"))
 	if err != nil {
 		b, err = ioutil.ReadFile(filepath.Join(dir, "k8s"))

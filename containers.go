@@ -24,7 +24,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func watchContainers(tail *tail, records chan<- record) {
+func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
+	mkdirs(qdir)
+
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic(err)
@@ -40,7 +42,7 @@ func watchContainers(tail *tail, records chan<- record) {
 	logDirs := make(map[string]string)
 
 	newContainer := func(logFile string) {
-		logDir, logFile := newContainer(logFile)
+		logDir, logFile := newContainer(logFile, qdir)
 		logDirs[logDir] = logFile
 		tail.follow(logFile, logDir)
 		runParser(&wg, logDir, records)
@@ -88,9 +90,9 @@ func watchContainers(tail *tail, records chan<- record) {
 	}
 }
 
-func newContainer(logFile string) (logDir, actualLogFile string) {
+func newContainer(logFile, dstDir string) (logDir, actualLogFile string) {
 	id := strings.TrimSuffix(filepath.Base(logFile), ".log")
-	logDir = filepath.Join(qdir, id)
+	logDir = filepath.Join(dstDir, id)
 	mkdirs(logDir)
 	createMetadataFile(logDir)
 
