@@ -187,6 +187,25 @@ func parseLogs(dir string, records chan<- record) {
 	}
 }
 
+// rawLog ---
+
+type rawLog struct {
+	Timestamp string `json:"time"`
+	Message   string `json:"log"`
+}
+
+func parseRaw(line []byte) (rawLog, error) {
+	raw := rawLog{}
+	if err := json.Unmarshal(line, &raw); err != nil {
+		fmt.Printf("error in parsing %q: %v\n", line, err)
+		return raw, err
+	}
+	if raw.Message != "" && raw.Message[len(raw.Message)-1] == '\n' {
+		raw.Message = raw.Message[:len(raw.Message)-1]
+	}
+	return raw, nil
+}
+
 // line ---
 
 type line struct {
