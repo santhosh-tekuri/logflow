@@ -103,14 +103,19 @@ func parseLogs(dir string, records chan<- record) {
 		return false
 	}
 
+	const d = 1 * time.Second
+	const multid = 5 * time.Second
+
 	nl := newLine()
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
 	wait := 0 * time.Second
 	for {
 		l, err := nl.readFrom(r)
 		var raw rawLog
 		switch err {
 		case io.EOF:
-			if rec != nil && wait >= 5*time.Second {
+			if rec != nil && wait >= multid {
 				if exit := sendRec(); exit {
 					return
 				}
@@ -128,11 +133,12 @@ func parseLogs(dir string, records chan<- record) {
 				continue
 			}
 			// fmt.Println("Zzzzzz")
+			timer.Reset(d)
 			select {
 			case <-exitCh:
 				return
-			case <-time.After(time.Second):
-				wait += time.Second
+			case <-timer.C:
+				wait += d
 				continue
 			}
 		case nil:
