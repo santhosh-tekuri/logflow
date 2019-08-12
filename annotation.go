@@ -15,6 +15,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -31,7 +32,7 @@ type annotation struct {
 }
 
 func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
-	msg, ts := raw.msg, raw.ts
+	msg, ts := raw.Message, raw.Timestamp
 	rec := make(map[string]interface{})
 	switch {
 	case a8n.format == nil:
@@ -166,23 +167,19 @@ func (a8n *annotation) unmarshal(s string) error {
 }
 
 type rawLog struct {
-	ts  string
-	msg string
+	Timestamp string `json:"time"`
+	Message   string `json:"log"`
 }
 
 func parseRaw(line []byte) (rawLog, error) {
 	raw := rawLog{}
-	m, err := jsonUnmarshal(line)
-	if err != nil {
+	if err := json.Unmarshal(line, &raw); err != nil {
 		fmt.Printf("error in parsing %q: %v\n", line, err)
 		return raw, err
 	}
-	raw.ts = m["time"].(string)
-	msg := m["log"].(string)
-	if strings.HasSuffix(msg, "\n") {
-		msg = msg[:len(msg)-1]
+	if strings.HasSuffix(raw.Message, "\n") {
+		raw.Message = raw.Message[:len(raw.Message)-1]
 	}
-	raw.msg = msg
 	return raw, nil
 }
 

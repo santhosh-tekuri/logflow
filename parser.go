@@ -154,12 +154,12 @@ func parseLogs(dir string, records chan<- record) {
 				panic(err)
 			}
 			if rec != nil {
-				if a8n.multi.MatchString(raw.msg) {
+				if a8n.multi.MatchString(raw.Message) {
 					if exit := sendRec(); exit {
 						return
 					}
 				} else {
-					rec["@message"] = rec["@message"].(string) + "\n" + raw.msg
+					rec["@message"] = rec["@message"].(string) + "\n" + raw.Message
 					recPos = pos
 					continue
 				}
