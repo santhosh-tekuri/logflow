@@ -49,11 +49,13 @@ func (t *tail) stop(logFile string) {
 }
 
 func (t *tail) run() {
+	const d = 250 * time.Millisecond
+	timer := time.NewTimer(d)
 	for {
 		select {
 		case <-exitCh:
 			return
-		case <-time.After(250 * time.Millisecond):
+		case <-timer.C:
 			t.mu.Lock()
 			for logFile, lr := range t.m {
 				fi, err := os.Stat(logFile)
@@ -67,6 +69,7 @@ func (t *tail) run() {
 				}
 			}
 			t.mu.Unlock()
+			timer.Reset(d)
 		}
 	}
 }
