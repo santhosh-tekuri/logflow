@@ -158,7 +158,6 @@ func parseLogs(dir string, records chan<- record) {
 				}
 				return
 			}
-			raw = rawLog{}
 			de.Reset(l)
 			if err := raw.unmarshal(de); err != nil {
 				panic(err)
@@ -205,6 +204,9 @@ func (r *rawLog) unmarshal(de json.Decoder) error {
 			r.Timestamp, err = de.Token().String("rawLog.Timestamp")
 		case prop.Eq("log"):
 			r.Message, err = de.Token().String("rawLog.Message")
+			if r.Message != "" && r.Message[len(r.Message)-1] == '\n' {
+				r.Message = r.Message[:len(r.Message)-1]
+			}
 		default:
 			err = de.Skip()
 		}
