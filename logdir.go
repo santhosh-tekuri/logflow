@@ -74,7 +74,7 @@ func hasLogs(dir string) bool {
 // options
 var (
 	namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
-	a8nLabel    = "logflow.io/conf"
+	a8nName     = "logflow.io/conf"
 	dotAlt      = "_"
 )
 
@@ -105,7 +105,7 @@ func fetchMetadata(logName string) map[string]interface{} {
 	}
 	k8s["labels"] = pod.Metadata.Labels
 	k8s["nodename"] = pod.Spec.NodeName
-	if s, ok := pod.Metadata.Annotations[a8nLabel]; ok {
+	if s, ok := pod.Metadata.Annotations[a8nName]; ok {
 		k8s["annotation"] = s
 	}
 	return k8s

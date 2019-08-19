@@ -29,7 +29,7 @@ import (
 )
 
 func parseLogs(dir string, records chan<- record) {
-	fmt.Println("parsing", dir)
+	info("parsing", dir)
 
 	// init ext & pos
 	logs := getLogFiles(dir)
@@ -71,7 +71,7 @@ func parseLogs(dir string, records chan<- record) {
 	if s, ok := k8s["annotation"]; ok {
 		delete(k8s, "annotation")
 		if err := a8n.unmarshal(s.(string)); err != nil {
-			fmt.Println(err)
+			warn(err)
 		}
 	}
 
@@ -176,7 +176,7 @@ func parseLogs(dir string, records chan<- record) {
 			}
 			rec, err = a8n.parse(raw)
 			if err != nil {
-				fmt.Println(err)
+				warn(err)
 				break
 			}
 			recPos = pos

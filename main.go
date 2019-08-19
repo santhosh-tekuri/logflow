@@ -25,6 +25,15 @@ import (
 var exitCh = make(chan struct{})
 
 func main() {
+	confFile := "/etc/logflow/logflow.conf"
+	if len(os.Args) > 1 {
+		confFile = os.Args[1]
+	}
+	if err := parseConf(confFile); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	var wg sync.WaitGroup
 
 	tail := &tail{m: make(map[string]*logRef)}
@@ -54,4 +63,23 @@ func main() {
 	<-ch
 	close(exitCh)
 	wg.Wait()
+}
+
+func parseConf(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	m, err := readConf(f)
+	if err != nil {
+		return err
+	}
+	if s, ok := m["annotation"]; ok {
+		a8nName = s
+	}
+	if s, ok := m["dot_replacer"]; ok {
+		dotAlt = s
+	}
+	parseExportConf(m)
+	return nil
 }

@@ -188,3 +188,22 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 	}
 	return idx, err
 }
+
+func parseExportConf(m map[string]string) error {
+	s, ok := m["elasticsearch.url"]
+	if !ok {
+		return errors.New("config: elasticsearch.url missing")
+	}
+	esURL = s
+	if s, ok = m["elasticsearch.bulk_size"]; ok {
+		sz, err := parseSize(s)
+		if err != nil {
+			return err
+		}
+		bulkLimit = int(sz)
+	}
+	if s, ok = m["elasticsearch.index_name.layout"]; ok {
+		indexLayout = s
+	}
+	return nil
+}
