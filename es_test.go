@@ -24,7 +24,7 @@ func Test_bulkSuccessful(t *testing.T) {
 	s := `
 	{
 		"took": 30,
-		"errors": false,
+		"errors": true,
 		"items": [
 		   {
 			  "index": {
@@ -104,7 +104,7 @@ func Test_bulkSuccessful(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []int{11, 21, 41, 0}
+	want := []int{11, 21, 41, -1}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatal("got:", got, "want:", want)
 	}

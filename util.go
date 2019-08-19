@@ -16,7 +16,6 @@ package main
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +24,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/santhosh-tekuri/json"
 )
 
 func readConf(r io.Reader) (map[string]string, error) {
@@ -164,11 +165,8 @@ func fileExists(name string) bool {
 }
 
 func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
-	m := make(map[string]interface{})
-	if err := json.Unmarshal(line, &m); err != nil {
-		return nil, err
-	}
-	return m, nil
+	m, err := json.NewByteDecoder(line).Unmarshal()
+	return m.(map[string]interface{}), err
 }
 
 // logging ---

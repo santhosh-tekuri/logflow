@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"testing"
 )
@@ -110,7 +109,6 @@ func Test_Line(t *testing.T) {
 			want := lines[0]
 			lines = lines[1:]
 			b, err := l.readFrom(readerFunc(f))
-			fmt.Println(string(b), err)
 			if err == io.EOF {
 				b = l.buffer()
 			} else if err != nil {

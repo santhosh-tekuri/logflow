@@ -16,7 +16,7 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
+	gojson "encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +24,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/santhosh-tekuri/json"
 )
 
 func parseLogs(dir string, records chan<- record) {
@@ -79,7 +81,7 @@ func parseLogs(dir string, records chan<- record) {
 	sendRec := func() (exit bool) {
 		//rec["@file"] = file
 		rec["@k8s"] = k8s
-		b, err := json.Marshal(rec)
+		b, err := gojson.Marshal(rec)
 		if err != nil {
 			panic(err)
 		}
@@ -103,6 +105,7 @@ func parseLogs(dir string, records chan<- record) {
 		return false
 	}
 
+	de := json.NewByteDecoder(nil)
 	const d = 1 * time.Second
 	const multid = 5 * time.Second
 
@@ -155,8 +158,9 @@ func parseLogs(dir string, records chan<- record) {
 				}
 				return
 			}
-			raw, err = parseRaw(l)
-			if err != nil {
+			raw = rawLog{}
+			de.Reset(l)
+			if err := raw.unmarshal(de); err != nil {
 				panic(err)
 			}
 			if rec != nil {
@@ -194,16 +198,18 @@ type rawLog struct {
 	Message   string `json:"log"`
 }
 
-func parseRaw(line []byte) (rawLog, error) {
-	raw := rawLog{}
-	if err := json.Unmarshal(line, &raw); err != nil {
-		fmt.Printf("error in parsing %q: %v\n", line, err)
-		return raw, err
-	}
-	if raw.Message != "" && raw.Message[len(raw.Message)-1] == '\n' {
-		raw.Message = raw.Message[:len(raw.Message)-1]
-	}
-	return raw, nil
+func (r *rawLog) unmarshal(de json.Decoder) error {
+	return json.UnmarshalObj("rawLog", de, func(de json.Decoder, prop json.Token) (err error) {
+		switch {
+		case prop.Eq("time"):
+			r.Timestamp, err = de.Token().String("rawLog.Timestamp")
+		case prop.Eq("log"):
+			r.Message, err = de.Token().String("rawLog.Message")
+		default:
+			err = de.Skip()
+		}
+		return
+	})
 }
 
 // line ---

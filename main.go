@@ -46,7 +46,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchContainers("/var/log/containers/", "/var/log/containers/flow/", tail, r.records)
+		watchContainers("/var/log/containers/", "/var/log/containers/logflow/", tail, r.records)
 	}()
 
 	ch := make(chan os.Signal, 2)

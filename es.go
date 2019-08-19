@@ -17,7 +17,7 @@ package main
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +25,8 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/santhosh-tekuri/json"
 )
 
 // options
@@ -136,44 +138,53 @@ func bulk(esurl string, body []byte) error {
 	return nil
 }
 
+var errStop = errors.New("stop unmarshalling")
+
 func bulkSuccessful(r io.Reader) ([]int, error) {
-	var successful []int
-	var stack []json.Token
-	peek := func() json.Token {
-		if len(stack) == 0 {
-			return nil
-		}
-		return stack[len(stack)-1]
-	}
-	d := json.NewDecoder(r)
-	for {
-		t, err := d.Token()
-		if err != nil {
-			if err == io.EOF {
-				return successful, nil
+	d := json.NewReadDecoder(r)
+	var idx []int
+	err := json.UnmarshalObj("bulk", d, func(d json.Decoder, prop json.Token) (err error) {
+		switch {
+		case prop.Eq("errors"):
+			var errors bool
+			errors, err = d.Token().Bool("bulk.errors")
+			if !errors {
+				return errStop
 			}
-			return nil, err
-		}
-		switch t {
-		case json.Delim('{'), json.Delim('['):
-			if len(stack) == 7 && peek() == "error" {
-				successful = append(successful, -1)
-			}
-			stack = append(stack, t)
-		case json.Delim(']'), json.Delim('}'):
-			stack = stack[:len(stack)-1]
-			if _, ok := peek().(string); ok {
-				stack = stack[:len(stack)-1]
-			}
+		case prop.Eq("items"):
+			json.UnmarshalArr("items", d, func(d json.Decoder) error {
+				return json.UnmarshalObj("items[]", d, func(d json.Decoder, prop json.Token) (err error) {
+					return json.UnmarshalObj("index", d, func(d json.Decoder, prop json.Token) (err error) {
+						switch {
+						case prop.Eq("error"):
+							idx = append(idx, -1)
+							err = d.Skip()
+						case prop.Eq("_shards"):
+							return json.UnmarshalObj("_shards", d, func(d json.Decoder, prop json.Token) (err error) {
+								switch {
+								case prop.Eq("successful"):
+									var i int
+									i, err = d.Token().Int("successful")
+									idx = append(idx, i)
+								default:
+									err = d.Skip()
+								}
+								return err
+							})
+						default:
+							err = d.Skip()
+						}
+						return
+					})
+				})
+			})
 		default:
-			if peek() == json.Delim('{') {
-				stack = append(stack, t)
-			} else {
-				if len(stack) == 9 && peek() == "successful" {
-					successful = append(successful, int(t.(float64)))
-				}
-				stack = stack[:len(stack)-1]
-			}
+			err = d.Skip()
 		}
+		return
+	})
+	if err == errStop {
+		err = nil
 	}
+	return idx, err
 }
