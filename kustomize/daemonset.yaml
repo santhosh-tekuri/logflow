@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: logflow
+spec:
+  template:
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+        - name: logflow
+          image: logflow:0.1.0
+          volumeMounts:
+          - name: var
+            mountPath: /var
+          - name: config
+            mountPath: /etc/logflow
+      volumes:
+      - name: var
+        hostPath:
+          path: /var
+      - name: config
+        configMap:
+          name: logflow
+      serviceAccountName: logflow
