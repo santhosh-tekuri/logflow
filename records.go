@@ -131,14 +131,16 @@ func (cur *cursor) commit() (finished bool) {
 
 func (cur *cursor) delete(i, ext int) (finished bool) {
 	if ext == -1 {
-		cur.f.Close()
-		fmt.Println("deleting", cur.dir)
-		os.RemoveAll(cur.dir)
+		_ = cur.f.Close()
+		info("deleting", cur.dir)
+		if err := os.RemoveAll(cur.dir); err != nil {
+			warn(err)
+		}
 		return true
 	}
 	for i < ext {
 		f := filepath.Join(cur.dir, fmt.Sprintf("log.%d", i))
-		fmt.Println("deleting", f)
+		info("deleting", f)
 		if err := os.RemoveAll(f); err != nil {
 			panic(err)
 		}

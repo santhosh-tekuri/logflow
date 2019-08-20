@@ -22,11 +22,14 @@ import (
 	"time"
 )
 
+// tail watches inode change of log-files and
+// creates a hard link in dstDir when inode changes.
 type tail struct {
 	mu sync.Mutex
 	m  map[string]*logRef
 }
 
+// follow registers file to detect inode change
 func (t *tail) follow(logFile, dstDir string) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
@@ -42,12 +45,15 @@ func (t *tail) follow(logFile, dstDir string) {
 	t.m[logFile] = lr
 }
 
+// stop stops following the logFile
 func (t *tail) stop(logFile string) {
 	t.mu.Lock()
 	delete(t.m, logFile)
 	t.mu.Unlock()
 }
 
+// run polls for inode changes of logFiles
+// periodically and takes action on inode change
 func (t *tail) run() {
 	const d = 250 * time.Millisecond
 	timer := time.NewTimer(d)
