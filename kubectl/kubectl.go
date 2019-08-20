@@ -17,13 +17,14 @@ package kubectl
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
+
+	"github.com/santhosh-tekuri/json"
 )
 
 var (
@@ -60,6 +61,8 @@ func init() {
 	}
 }
 
+//go:generate jsonc -o kubectl_json.go Pod
+
 type Pod struct {
 	Metadata struct {
 		Labels      map[string]string `json:"labels"`
@@ -85,16 +88,18 @@ func GetPod(ns, pod string) (Pod, error) {
 	if err != nil {
 		return Pod{}, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(os.Stdout, resp.Body)
+		_ = resp.Body.Close()
+	}()
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return Pod{}, nil
 	case http.StatusOK:
 		var p Pod
-		err = json.NewDecoder(resp.Body).Decode(&p)
+		err = p.Unmarshal(json.NewReadDecoder(resp.Body))
 		return p, err
 	default:
-		io.Copy(os.Stdout, resp.Body)
 		return Pod{}, errors.New(resp.Status)
 	}
 }
