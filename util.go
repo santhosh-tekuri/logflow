@@ -192,7 +192,7 @@ func fileExists(name string) bool {
 }
 
 func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
-	m, err := json.NewByteDecoder(line).Unmarshal(false)
+	m, err := json.NewByteDecoder(line).Unmarshal()
 	return m.(map[string]interface{}), err
 }
 
