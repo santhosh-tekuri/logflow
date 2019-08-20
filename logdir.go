@@ -42,10 +42,13 @@ func createMetadataFile(dir string) {
 }
 
 func markTerminated(dir string) {
+	if fileExists(filepath.Join(dir, ".terminated")) {
+		return
+	}
 	logs := getLogFiles(dir)
 	if len(logs) == 0 {
 		if err := os.RemoveAll(dir); err != nil {
-			fmt.Println(err)
+			warn(err)
 		}
 		return
 	}
