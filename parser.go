@@ -57,11 +57,7 @@ func parseLogs(dir string, records chan<- record) {
 	// read .k8s
 	b, err = ioutil.ReadFile(filepath.Join(dir, ".k8s"))
 	if err != nil {
-		b, err = ioutil.ReadFile(filepath.Join(dir, "k8s"))
-		if err != nil {
-			b = []byte("{}")
-			//panic(err)
-		}
+		b = []byte("{}")
 	}
 	k8s, err := jsonUnmarshal(b)
 	if err != nil {
