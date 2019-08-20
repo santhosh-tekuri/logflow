@@ -119,7 +119,7 @@ func subdirs(dir string) []string {
 	var subdirs []string
 	for _, f := range ff {
 		if f.IsDir() {
-			subdirs = append(subdirs, f.Name())
+			subdirs = append(subdirs, filepath.Join(dir, f.Name()))
 		}
 	}
 	return subdirs
@@ -192,7 +192,7 @@ func fileExists(name string) bool {
 }
 
 func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
-	m, err := json.NewByteDecoder(line).Unmarshal()
+	m, err := json.NewByteDecoder(line).Unmarshal(false)
 	return m.(map[string]interface{}), err
 }
 
