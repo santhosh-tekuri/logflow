@@ -45,8 +45,9 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 					msg = fmt.Sprint(v)
 				} else {
 					if k == "time" || k == "timestamp" || k == "ts" {
-						if _, err := time.Parse(time.RFC3339Nano, fmt.Sprint(v)); err == nil {
-							ts = fmt.Sprint(v)
+						sv := fmt.Sprint(v)
+						if _, err := time.Parse(time.RFC3339Nano, sv); err == nil {
+							ts = sv
 							continue
 						}
 					}
