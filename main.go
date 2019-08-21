@@ -30,7 +30,7 @@ func main() {
 		confFile = os.Args[1]
 	}
 	if err := parseConf(confFile); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
@@ -40,7 +40,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer fmt.Println("tailing exited")
+		defer info("tailing exited")
 		tail.run()
 	}()
 
@@ -48,7 +48,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer fmt.Println("exporter exited")
+		defer info("exporter exited")
 		export(r)
 	}()
 
@@ -80,6 +80,5 @@ func parseConf(path string) error {
 	if s, ok := m["dot_replacer"]; ok {
 		dotAlt = s
 	}
-	parseExportConf(m)
-	return nil
+	return parseExportConf(m)
 }

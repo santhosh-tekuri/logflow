@@ -18,12 +18,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/santhosh-tekuri/json"
@@ -114,12 +112,10 @@ func bulk(esurl string, body []byte) error {
 		return err
 	}
 	defer func() {
-		io.Copy(ioutil.Discard, resp.Body)
-		resp.Body.Close()
+		_, _ = io.Copy(ioutil.Discard, resp.Body)
+		_ = resp.Body.Close()
 	}()
 	if resp.StatusCode > 299 {
-		io.Copy(os.Stdout, resp.Body)
-		fmt.Println()
 		warn("elasticsearch returned", resp.Status)
 	} else {
 		ss, err := bulkSuccessful(bytes.NewReader(body))
@@ -152,7 +148,7 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 				return errStop
 			}
 		case prop.Eq("items"):
-			json.UnmarshalArr("items", d, func(d json.Decoder) error {
+			err = json.UnmarshalArr("items", d, func(d json.Decoder) error {
 				return json.UnmarshalObj("items[]", d, func(d json.Decoder, prop json.Token) (err error) {
 					return json.UnmarshalObj("index", d, func(d json.Decoder, prop json.Token) (err error) {
 						switch {

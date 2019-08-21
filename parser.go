@@ -131,7 +131,6 @@ func parseLogs(dir string, records chan<- record) {
 				pos, recPos = 0, 0
 				continue
 			}
-			// fmt.Println("Zzzzzz")
 			timer.Reset(d)
 			select {
 			case <-exitCh:

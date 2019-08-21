@@ -16,7 +16,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -94,7 +93,7 @@ func fetchMetadata(logName string) map[string]interface{} {
 	}
 	pod, err := kubectl.GetPod(k8s["namespace"].(string), k8s["pod"].(string))
 	if err != nil {
-		fmt.Println(err)
+		warn(err)
 		return k8s
 	}
 	if dotAlt != "" {

@@ -104,7 +104,7 @@ func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		defer fmt.Println("parser", dir, "exited")
+		defer info("parser", dir, "exited")
 		parseLogs(dir, records)
 	}()
 }
