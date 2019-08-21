@@ -8,10 +8,6 @@ func (p *Pod) Unmarshal(de json.Decoder) error {
 	return json.UnmarshalObj("Pod", de, func(de json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("metadata"):
-			p.Metadata = struct {
-				Labels      map[string]string `json:"labels"`
-				Annotations map[string]string `json:"annotations"`
-			}{}
 			err = json.UnmarshalObj("Pod.Metadata", de, func(de json.Decoder, prop json.Token) (err error) {
 				switch {
 				case prop.Eq("labels"):
@@ -36,9 +32,6 @@ func (p *Pod) Unmarshal(de json.Decoder) error {
 				return
 			})
 		case prop.Eq("spec"):
-			p.Spec = struct {
-				NodeName string `json:"nodeName"`
-			}{}
 			err = json.UnmarshalObj("Pod.Spec", de, func(de json.Decoder, prop json.Token) (err error) {
 				switch {
 				case prop.Eq("nodeName"):
