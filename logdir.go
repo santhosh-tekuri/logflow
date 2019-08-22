@@ -15,7 +15,6 @@
 package main
 
 import (
-	"encoding/json"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -23,6 +22,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/santhosh-tekuri/json"
 	"github.com/santhosh-tekuri/logflow/kubectl"
 )
 

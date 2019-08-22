@@ -16,7 +16,6 @@ package main
 
 import (
 	"bytes"
-	gojson "encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -77,7 +76,7 @@ func parseLogs(dir string, records chan<- record) {
 	sendRec := func() (exit bool) {
 		//rec["@file"] = file
 		rec["@k8s"] = k8s
-		b, err := gojson.Marshal(rec)
+		b, err := json.Marshal(rec)
 		if err != nil {
 			panic(err)
 		}
