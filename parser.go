@@ -54,20 +54,24 @@ func parseLogs(dir string, records chan<- record) {
 	}
 
 	// read .k8s
-	b, err = ioutil.ReadFile(filepath.Join(dir, ".k8s"))
+	k8s, err := ioutil.ReadFile(filepath.Join(dir, ".k8s"))
 	if err != nil {
 		b = []byte("{}")
 	}
-	k8s, err := jsonUnmarshal(b)
+	m, err := jsonUnmarshal(k8s)
 	if err != nil {
 		panic(err)
 	}
 	a8n := new(annotation)
-	if s, ok := k8s["annotation"]; ok {
-		delete(k8s, "annotation")
+	if s, ok := m["annotation"]; ok {
+		delete(m, "annotation")
 		if err := a8n.unmarshal(s.(string)); err != nil {
 			warn(err)
 		}
+	}
+	k8s, err = json.Marshal(m)
+	if err != nil {
+		panic(err)
 	}
 
 	//file := filepath.Base(dir) + ".log"
@@ -75,24 +79,15 @@ func parseLogs(dir string, records chan<- record) {
 	var recPos = pos
 	sendRec := func() (exit bool) {
 		//rec["@file"] = file
-		rec["@k8s"] = k8s
-		b, err := json.Marshal(rec)
-		if err != nil {
-			panic(err)
-		}
-		ts, err := time.Parse(time.RFC3339Nano, rec["@timestamp"].(string))
-		if err != nil {
-			panic(err)
-		}
+		rec["@k8s"] = json.RawMessage(k8s)
 		select {
 		case <-exitCh:
 			return true
 		case records <- record{
-			dir:  dir,
-			ext:  ext,
-			pos:  recPos,
-			ts:   ts,
-			json: b,
+			dir: dir,
+			ext: ext,
+			pos: recPos,
+			doc: rec,
 		}:
 		}
 		//fmt.Printf("%s\n", string(b))

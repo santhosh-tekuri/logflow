@@ -43,10 +43,16 @@ func export(r *records) {
 			return
 		}
 		if err == nil {
+			ts, err := time.Parse(time.RFC3339Nano, rec.doc["@timestamp"].(string))
+			if err != nil {
+				panic(err)
+			}
 			body.WriteString(`{"index":{"_index":"`)
-			body.WriteString(rec.ts.Format(indexLayout))
+			body.WriteString(ts.Format(indexLayout))
 			body.WriteString("\"}}\n")
-			body.Write(rec.json)
+			if err := json.NewEncoder(body).Encode(rec.doc); err != nil {
+				panic(err)
+			}
 			body.WriteByte('\n')
 		}
 		if body.Len() > 0 && (err == errTimeout || body.Len() >= bulkLimit) {

@@ -72,11 +72,10 @@ func (r *records) commit() {
 }
 
 type record struct {
-	dir  string
-	ext  int
-	pos  int64
-	ts   time.Time
-	json []byte
+	dir string
+	ext int
+	pos int64
+	doc map[string]interface{}
 }
 
 type cursor struct {
