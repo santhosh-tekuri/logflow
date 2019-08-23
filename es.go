@@ -100,19 +100,10 @@ func bulk(esurl string, body []byte) error {
 	if err != nil {
 		panic(err)
 	}
-	ctx, cancel := context.WithCancel(req.Context())
-	req = req.WithContext(ctx)
+	req = req.WithContext(exitCtx)
 	req.Header.Set("Content-Type", "application/x-ndjson")
 	req.ContentLength = int64(len(body))
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-exitCh:
-			cancel()
-		}
-	}()
 	resp, err := http.DefaultClient.Do(req)
-	cancel()
 	if err != nil {
 		if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
 			return uerr.Err

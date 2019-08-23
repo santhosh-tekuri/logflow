@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -22,7 +23,10 @@ import (
 	"syscall"
 )
 
-var exitCh = make(chan struct{})
+var (
+	exitCh  = make(chan struct{})
+	exitCtx = context.Background()
+)
 
 func main() {
 	confFile := "/etc/logflow/logflow.conf"
@@ -58,10 +62,13 @@ func main() {
 		watchContainers("/var/log/containers/", "/var/log/containers/logflow/", tail, r.records)
 	}()
 
+	var cancel context.CancelFunc
+	exitCtx, cancel = context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	<-ch
 	close(exitCh)
+	cancel()
 	wg.Wait()
 }
 
