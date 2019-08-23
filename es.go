@@ -93,13 +93,14 @@ func bulkRetry(url string, body []byte) (cancelled bool) {
 	}
 }
 
+var discardBuf = make([]byte, 100)
+
 func bulk(esurl string, body []byte) error {
 	req, err := http.NewRequest(http.MethodPost, esurl, bytes.NewReader(body))
 	if err != nil {
 		panic(err)
 	}
 	ctx, cancel := context.WithCancel(req.Context())
-	defer cancel()
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/x-ndjson")
 	req.ContentLength = int64(len(body))
@@ -111,16 +112,13 @@ func bulk(esurl string, body []byte) error {
 		}
 	}()
 	resp, err := http.DefaultClient.Do(req)
+	cancel()
 	if err != nil {
 		if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
 			return uerr.Err
 		}
 		return err
 	}
-	defer func() {
-		_, _ = io.Copy(ioutil.Discard, resp.Body)
-		_ = resp.Body.Close()
-	}()
 	if resp.StatusCode > 299 {
 		warn("elasticsearch returned", resp.Status)
 	} else {
@@ -137,7 +135,8 @@ func bulk(esurl string, body []byte) error {
 			}
 		}
 	}
-	return nil
+	_, _ = io.CopyBuffer(ioutil.Discard, resp.Body, discardBuf)
+	return resp.Body.Close()
 }
 
 var errStop = errors.New("stop unmarshalling")
