@@ -42,7 +42,11 @@ func parseLogs(dir string, records chan<- record) {
 	}
 
 	// open file & seek
-	f := filepath.Join(dir, fmt.Sprintf("log.%d", ext))
+	f := getLogFile(dir, ext)
+	for !fileExists(f) {
+		f = nextLogFile(f)
+		pos = 0
+	}
 	r, err := os.Open(f)
 	if err != nil {
 		panic(err)
@@ -258,6 +262,10 @@ func (l *line) buffer() []byte {
 }
 
 // ---
+
+func getLogFile(dir string, ext int) string {
+	return filepath.Join(dir, fmt.Sprintf("log.%d", ext))
+}
 
 func nextLogFile(name string) string {
 	i := extInt(name)
