@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -51,9 +52,11 @@ func markTerminated(dir string) {
 		}
 		return
 	}
-	next := nextLogFile(logs[len(logs)-1])
-	if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
-		panic(err)
+	if !IsEndFile(logs[len(logs)-1]) {
+		next := nextLogFile(logs[len(logs)-1])
+		if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
+			panic(err)
+		}
 	}
 	f, err := os.Create(filepath.Join(dir, ".terminated"))
 	if err != nil {
@@ -120,4 +123,19 @@ func getLogFiles(dir string) []string {
 		return x < y
 	})
 	return logs
+}
+
+func IsEndFile(path string) bool {
+	fi, err := os.Stat(path)
+	if err != nil {
+		panic(err)
+	}
+	if fi.Size() != 4 {
+		return false
+	}
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		panic(err)
+	}
+	return bytes.Equal(b, []byte("END\n"))
 }
