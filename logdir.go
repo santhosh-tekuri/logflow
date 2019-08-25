@@ -78,21 +78,14 @@ func hasLogs(dir string) bool {
 
 // options
 var (
-	namePattern = regexp.MustCompile(`(?P<pod>[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
-	a8nName     = "logflow.io/conf"
-	dotAlt      = "_"
+	a8nName = "logflow.io/conf"
+	dotAlt  = "_"
 )
 
 func fetchMetadata(logName string) map[string]interface{} {
-	g := namePattern.FindStringSubmatch(logName)
-	if len(g) == 0 {
+	k8s := parseLogName(logName)
+	if k8s == nil {
 		return nil
-	}
-	k8s := make(map[string]interface{})
-	for i, name := range namePattern.SubexpNames() {
-		if name != "" {
-			k8s[name] = g[i]
-		}
 	}
 	pod, err := kubectl.GetPod(k8s["namespace"].(string), k8s["pod"].(string))
 	if err != nil {
@@ -112,6 +105,22 @@ func fetchMetadata(logName string) map[string]interface{} {
 	k8s["nodename"] = pod.Spec.NodeName
 	if s, ok := pod.Metadata.Annotations[a8nName]; ok {
 		k8s["annotation"] = s
+	}
+	return k8s
+}
+
+var namePattern = regexp.MustCompile(`(?P<pod>[^_]+)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
+
+func parseLogName(name string) map[string]interface{} {
+	g := namePattern.FindStringSubmatch(name)
+	if len(g) == 0 {
+		return nil
+	}
+	k8s := make(map[string]interface{})
+	for i, name := range namePattern.SubexpNames() {
+		if name != "" {
+			k8s[name] = g[i]
+		}
 	}
 	return k8s
 }
