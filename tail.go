@@ -104,4 +104,7 @@ func (lr *logRef) save(logFile string) {
 	if err := os.Link(logFile, dstFile); err != nil {
 		panic(err)
 	}
+	numFilesMu.Lock()
+	numFiles[lr.dst]++
+	numFilesMu.Unlock()
 }

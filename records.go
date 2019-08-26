@@ -135,6 +135,9 @@ func (cur *cursor) delete(i, ext int) (finished bool) {
 		if err := os.RemoveAll(cur.dir); err != nil {
 			warn(err)
 		}
+		numFilesMu.Lock()
+		delete(numFiles, cur.dir)
+		numFilesMu.Unlock()
 		return true
 	}
 	for i < ext {
@@ -144,6 +147,9 @@ func (cur *cursor) delete(i, ext int) (finished bool) {
 			panic(err)
 		}
 		i++
+		numFilesMu.Lock()
+		numFiles[cur.dir]--
+		numFilesMu.Unlock()
 	}
 	return false
 }

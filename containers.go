@@ -24,6 +24,11 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
+var (
+	numFiles   = make(map[string]int)
+	numFilesMu = sync.Mutex{}
+)
+
 func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 	mkdirs(qdir)
 
@@ -44,6 +49,10 @@ func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 	newContainer := func(logFile string) {
 		logDir, logFile := newContainer(logFile, qdir)
 		logDirs[logDir] = logFile
+		n := len(getLogFiles(logDir))
+		numFilesMu.Lock()
+		numFiles[logDir] = n
+		numFilesMu.Unlock()
 		tail.follow(logFile, logDir)
 		runParser(&wg, logDir, records)
 	}
@@ -57,6 +66,10 @@ func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 		}
 		markTerminated(logDir)
 		if hasLogs(logDir) {
+			n := len(getLogFiles(logDir))
+			numFilesMu.Lock()
+			numFiles[logDir] = n - 1 // exclude end file
+			numFilesMu.Unlock()
 			runParser(&wg, logDir, records)
 		} else {
 			if err := os.RemoveAll(logDir); err != nil {
