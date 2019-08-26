@@ -141,6 +141,9 @@ func parseLogs(dir string, records chan<- record) {
 			pos += int64(len(l) + 1)
 			wait = 0
 			if len(l) == 3 && "END" == string(l) {
+				if rec != nil {
+					sendRec()
+				}
 				select {
 				case <-exitCh:
 					return
