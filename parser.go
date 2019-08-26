@@ -80,7 +80,6 @@ func parseLogs(dir string, records chan<- record) {
 
 	//file := filepath.Base(dir) + ".log"
 	var rec map[string]interface{}
-	var recPos = pos
 	sendRec := func() (exit bool) {
 		//rec["@file"] = file
 		rec["@k8s"] = json.RawMessage(k8s)
@@ -90,7 +89,7 @@ func parseLogs(dir string, records chan<- record) {
 		case records <- record{
 			dir: dir,
 			ext: ext,
-			pos: recPos,
+			pos: pos,
 			doc: rec,
 		}:
 		}
@@ -120,13 +119,13 @@ func parseLogs(dir string, records chan<- record) {
 			}
 			next := nextLogFile(r.Name())
 			if fileExists(next) {
-				r.Close()
+				_ = r.Close()
 				r, err = os.Open(next)
 				if err != nil {
 					panic(err)
 				}
 				ext++
-				pos, recPos = 0, 0
+				pos = 0
 				continue
 			}
 			timer.Reset(d)
@@ -138,7 +137,6 @@ func parseLogs(dir string, records chan<- record) {
 				continue
 			}
 		case nil:
-			pos += int64(len(l) + 1)
 			wait = 0
 			if len(l) == 3 && "END" == string(l) {
 				if rec != nil {
@@ -158,23 +156,21 @@ func parseLogs(dir string, records chan<- record) {
 			if err := raw.unmarshal(de); err != nil {
 				panic(err)
 			}
-			if rec != nil {
-				if a8n.multi.MatchString(raw.Message) {
-					if exit := sendRec(); exit {
-						return
-					}
-				} else {
-					rec["@message"] = rec["@message"].(string) + "\n" + raw.Message
-					recPos = pos
-					continue
+			if rec != nil && a8n.multi.MatchString(raw.Message) {
+				if exit := sendRec(); exit {
+					return
 				}
+			}
+			pos += int64(len(l) + 1)
+			if rec != nil {
+				rec["@message"] = rec["@message"].(string) + "\n" + raw.Message
+				continue
 			}
 			rec, err = a8n.parse(raw)
 			if err != nil {
 				warn(err)
 				break
 			}
-			recPos = pos
 			if a8n.multi == nil {
 				if exit := sendRec(); exit {
 					return
