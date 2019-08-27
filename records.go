@@ -143,13 +143,14 @@ func (cur *cursor) delete(i, ext int) (finished bool) {
 	for i < ext {
 		f := filepath.Join(cur.dir, fmt.Sprintf("log.%d", i))
 		info("deleting", f)
-		if err := os.RemoveAll(f); err != nil {
+		if err := os.Remove(f); err == nil {
+			numFilesMu.Lock()
+			numFiles[cur.dir]--
+			numFilesMu.Unlock()
+		} else if !os.IsNotExist(err) {
 			panic(err)
 		}
 		i++
-		numFilesMu.Lock()
-		numFiles[cur.dir]--
-		numFilesMu.Unlock()
 	}
 	return false
 }
