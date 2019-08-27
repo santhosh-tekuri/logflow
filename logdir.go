@@ -19,7 +19,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -109,20 +108,30 @@ func fetchMetadata(logName string) map[string]interface{} {
 	return k8s
 }
 
-var namePattern = regexp.MustCompile(`(?P<pod>[^_]+)_(?P<namespace>[^_]+)_(?P<container_name>.+)-(?P<container_id>[a-z0-9]{64})$`)
-
 func parseLogName(name string) map[string]interface{} {
-	g := namePattern.FindStringSubmatch(name)
-	if len(g) == 0 {
+	i := strings.IndexByte(name, '_')
+	if i == -1 {
 		return nil
 	}
-	k8s := make(map[string]interface{})
-	for i, name := range namePattern.SubexpNames() {
-		if name != "" {
-			k8s[name] = g[i]
-		}
+	pod, name := name[:i], name[i+1:]
+
+	i = strings.IndexByte(name, '_')
+	if i == -1 {
+		return nil
 	}
-	return k8s
+	ns, name := name[:i], name[i+1:]
+
+	i = strings.LastIndexByte(name, '-')
+	if i == -1 {
+		return nil
+	}
+	cid, cname := name[i+1:], name[:i]
+	return map[string]interface{}{
+		"pod":            pod,
+		"namespace":      ns,
+		"container_name": cname,
+		"container_id":   cid,
+	}
 }
 
 func getLogFiles(dir string) []string {
