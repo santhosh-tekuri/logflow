@@ -28,7 +28,7 @@ import (
 )
 
 func parseLogs(dir string, records chan<- record, removed chan struct{}) {
-	info("parsing", dir)
+	info(" parsing", dir[len(qdir):])
 
 	// init ext & pos
 	logs := getLogFiles(dir)
@@ -117,7 +117,7 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 	wait := 0 * time.Second
 	for {
 		for r == nil {
-			info("skipping", f)
+			info("skipping", f[len(qdir):])
 			f = nextLogFile(f)
 			if fileExists(f) {
 				r, err = os.Open(f)

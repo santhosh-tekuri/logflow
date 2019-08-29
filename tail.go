@@ -99,8 +99,8 @@ func (lr *logRef) save(logFile string) {
 			return
 		}
 	}
-	info("storing", logFile)
 	dstFile := filepath.Join(lr.dst, fmt.Sprintf("log.%d", lext+1))
+	info(" storing", dstFile[len(qdir):])
 	if err := os.Link(logFile, dstFile); err != nil {
 		panic(err)
 	}

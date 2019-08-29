@@ -134,7 +134,7 @@ func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 	go func() {
 		p := parser{make(chan struct{}), make(chan struct{})}
 		defer func() {
-			info("parser", dir, "exited")
+			info("finished", dir[len(qdir):])
 			parsersMu.Lock()
 			close(p.closed)
 			delete(parsers, dir)

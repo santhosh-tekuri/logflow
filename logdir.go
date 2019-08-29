@@ -176,7 +176,7 @@ func removeLogFile(dir string) bool {
 	}
 	f := files[0]
 	if err := os.Remove(f); err == nil {
-		info("discarded", f)
+		info(" discard", f[len(qdir):])
 		numFilesMu.Lock()
 		if _, ok := numFiles[dir]; ok {
 			numFiles[dir]--

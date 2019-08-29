@@ -131,7 +131,7 @@ func (cur *cursor) commit() (finished bool) {
 func (cur *cursor) delete(i, ext int) (finished bool) {
 	if ext == -1 {
 		_ = cur.f.Close()
-		info("deleting", cur.dir)
+		info("deleting", cur.dir[len(qdir):])
 		if err := os.RemoveAll(cur.dir); err != nil {
 			warn(err)
 		}
@@ -142,7 +142,7 @@ func (cur *cursor) delete(i, ext int) (finished bool) {
 	}
 	for i < ext {
 		f := filepath.Join(cur.dir, fmt.Sprintf("log.%d", i))
-		info("deleting", f)
+		info("deleting", f[len(qdir):])
 		if err := os.Remove(f); err == nil {
 			numFilesMu.Lock()
 			numFiles[cur.dir]--
