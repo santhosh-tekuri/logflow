@@ -16,11 +16,18 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
+)
+
+const (
+	kdir = "/var/log/containers/"
+	qdir = "/var/log/containers/logflow/"
 )
 
 var (
@@ -59,7 +66,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchContainers("/var/log/containers/", "/var/log/containers/logflow/", tail, r.records)
+		watchContainers(kdir, qdir, tail, r.records)
 	}()
 
 	var cancel context.CancelFunc
@@ -80,6 +87,20 @@ func parseConf(path string) error {
 	m, err := readConf(f)
 	if err != nil {
 		return err
+	}
+	s, ok := m["json-file.max-file"]
+	if !ok {
+		return errors.New("config: json-file.max-file missing")
+	}
+	maxDockerFiles, err = strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	if s, ok := m["maxFiles"]; ok {
+		maxFiles, err = strconv.Atoi(s)
+		if err != nil {
+			return err
+		}
 	}
 	if s, ok := m["annotation"]; ok {
 		a8nName = s

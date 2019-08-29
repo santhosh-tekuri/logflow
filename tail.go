@@ -107,4 +107,39 @@ func (lr *logRef) save(logFile string) {
 	numFilesMu.Lock()
 	numFiles[lr.dst]++
 	numFilesMu.Unlock()
+
+	// check maxFiles
+	numFilesMu.Lock()
+	c := 0
+	rmdir := ""
+	for dir, n := range numFiles {
+		f := filepath.Join(kdir, filepath.Base(dir)+".log")
+		if fileExists(f) {
+			if n <= maxDockerFiles {
+				continue
+			}
+			n -= maxDockerFiles
+		} else {
+			n -= 1 // exclude end file
+		}
+		if n > 0 {
+			c += n
+			rmdir = dir
+		}
+	}
+	numFilesMu.Unlock()
+	if c > maxFiles {
+		if removeLogFile(rmdir) {
+			parsersMu.Lock()
+			p, ok := parsers[rmdir]
+			parsersMu.Unlock()
+			if ok {
+				select {
+				case <-exitCh:
+				case p.removed <- struct{}{}:
+				case <-p.closed:
+				}
+			}
+		}
+	}
 }

@@ -27,7 +27,7 @@ import (
 	"github.com/santhosh-tekuri/json"
 )
 
-func parseLogs(dir string, records chan<- record) {
+func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 	info("parsing", dir)
 
 	// init ext & pos
@@ -83,15 +83,24 @@ func parseLogs(dir string, records chan<- record) {
 	sendRec := func() (exit bool) {
 		//rec["@file"] = file
 		rec["@k8s"] = json.RawMessage(k8s)
-		select {
-		case <-exitCh:
-			return true
-		case records <- record{
-			dir: dir,
-			ext: ext,
-			pos: pos,
-			doc: rec,
-		}:
+	L:
+		for {
+			select {
+			case <-exitCh:
+				return true
+			case <-removed:
+				if r != nil && !fileExists(f) {
+					_ = r.Close()
+					r = nil
+				}
+			case records <- record{
+				dir: dir,
+				ext: ext,
+				pos: pos,
+				doc: rec,
+			}:
+				break L
+			}
 		}
 		//fmt.Printf("%s\n", string(b))
 		rec = nil
@@ -107,6 +116,19 @@ func parseLogs(dir string, records chan<- record) {
 	timer.Stop()
 	wait := 0 * time.Second
 	for {
+		for r == nil {
+			info("skipping", f)
+			f = nextLogFile(f)
+			if fileExists(f) {
+				r, err = os.Open(f)
+				if err != nil {
+					panic(err)
+				}
+				ext = extInt(f)
+				pos = 0
+				nl.reset()
+			}
+		}
 		l, err := nl.readFrom(r)
 		var raw rawLog
 		switch err {
@@ -117,21 +139,31 @@ func parseLogs(dir string, records chan<- record) {
 				}
 				continue
 			}
-			next := nextLogFile(r.Name())
-			if fileExists(next) {
+			if next := nextLogFile(f); fileExists(next) {
+				f = next
 				_ = r.Close()
-				r, err = os.Open(next)
+				r, err = os.Open(f)
 				if err != nil {
 					panic(err)
 				}
 				ext++
 				pos = 0
+				nl.reset()
 				continue
 			}
 			timer.Reset(d)
 			select {
 			case <-exitCh:
 				return
+			case <-removed:
+				if r != nil && !fileExists(f) {
+					_ = r.Close()
+					r = nil
+				}
+				if !timer.Stop() {
+					<-timer.C
+				}
+				continue
 			case <-timer.C:
 				wait += d
 				continue
@@ -142,15 +174,19 @@ func parseLogs(dir string, records chan<- record) {
 				if rec != nil {
 					sendRec()
 				}
-				select {
-				case <-exitCh:
+				_ = r.Close()
+				for {
+					select {
+					case <-removed:
+						continue
+					case <-exitCh:
+					case records <- record{
+						dir: dir,
+						ext: -1,
+					}:
+					}
 					return
-				case records <- record{
-					dir: dir,
-					ext: -1,
-				}:
 				}
-				return
 			}
 			de.Reset(l)
 			if err := raw.unmarshal(de); err != nil {
@@ -258,6 +294,10 @@ func (l *line) readFrom(r io.Reader) ([]byte, error) {
 
 func (l *line) buffer() []byte {
 	return l.buf[l.off:]
+}
+
+func (l *line) reset() {
+	l.buf, l.off = l.buf[0:0], 0
 }
 
 // ---

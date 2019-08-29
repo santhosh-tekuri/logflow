@@ -29,6 +29,12 @@ var (
 	numFilesMu = sync.Mutex{}
 )
 
+// options
+var (
+	maxDockerFiles = 3
+	maxFiles       = 10
+)
+
 func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 	mkdirs(qdir)
 
@@ -113,11 +119,31 @@ func newContainer(logFile, dstDir string) (logDir, actualLogFile string) {
 	return logDir, logFile
 }
 
+type parser struct {
+	closed  chan struct{}
+	removed chan struct{}
+}
+
+var (
+	parsers   = make(map[string]parser)
+	parsersMu = sync.Mutex{}
+)
+
 func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		defer info("parser", dir, "exited")
-		parseLogs(dir, records)
+		p := parser{make(chan struct{}), make(chan struct{})}
+		defer func() {
+			info("parser", dir, "exited")
+			parsersMu.Lock()
+			close(p.closed)
+			delete(parsers, dir)
+			parsersMu.Unlock()
+			wg.Done()
+		}()
+		parsersMu.Lock()
+		parsers[dir] = p
+		parsersMu.Unlock()
+		defer parseLogs(dir, records, p.removed)
 	}()
 }

@@ -41,7 +41,7 @@ func createMetadataFile(dir string) {
 }
 
 func markTerminated(dir string) {
-	if fileExists(filepath.Join(dir, ".terminated")) {
+	if fileExists(termFile(dir)) {
 		return
 	}
 	logs := getLogFiles(dir)
@@ -57,7 +57,7 @@ func markTerminated(dir string) {
 			panic(err)
 		}
 	}
-	f, err := os.Create(filepath.Join(dir, ".terminated"))
+	f, err := os.Create(termFile(dir))
 	if err != nil {
 		panic(err)
 	}
@@ -69,7 +69,7 @@ func hasLogs(dir string) bool {
 	if len(logs) == 0 {
 		return false
 	}
-	if len(logs) == 1 && fileExists(filepath.Join(dir, ".terminated")) {
+	if len(logs) == 1 && fileExists(termFile(dir)) {
 		return false
 	}
 	return true
@@ -156,4 +156,35 @@ func IsEndFile(path string) bool {
 		panic(err)
 	}
 	return bytes.Equal(b, []byte("END\n"))
+}
+
+func termFile(dir string) string {
+	return filepath.Join(dir, ".terminated")
+}
+
+func removeLogFile(dir string) bool {
+	files := getLogFiles(dir)
+	if len(files) == 0 {
+		return false
+	}
+	if fileExists(termFile(dir)) {
+		if len(files) == 1 {
+			return false
+		}
+	} else if len(files) <= maxDockerFiles {
+		return false
+	}
+	f := files[0]
+	if err := os.Remove(f); err == nil {
+		info("discarded", f)
+		numFilesMu.Lock()
+		if _, ok := numFiles[dir]; ok {
+			numFiles[dir]--
+		}
+		numFilesMu.Unlock()
+		return true
+	} else if !os.IsNotExist(err) {
+		panic(err)
+	}
+	return false
 }
