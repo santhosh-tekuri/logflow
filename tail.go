@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -94,20 +95,39 @@ func (lr *logRef) save(logFile string) {
 		lfile = logs[len(logs)-1]
 		lext = extInt(lfile)
 	}
-	if lfile != "" {
-		if sameFile(lfile, logFile) {
-			return
+	files := make([]string, 0, maxDockerFiles)
+	if lfile != "" && sameFile(lfile, logFile) {
+		return
+	}
+	files = append(files, logFile)
+	for i := 1; true; i++ {
+		f := logFile + "." + strconv.Itoa(i)
+		if !fileExists(f) {
+			break
 		}
+		if lfile != "" && sameFile(lfile, f) {
+			break
+		}
+		files = append(files, f)
 	}
-	dstFile := filepath.Join(lr.dst, fmt.Sprintf("log.%d", lext+1))
-	info(" storing", dstFile[len(qdir):])
-	if err := os.Link(logFile, dstFile); err != nil {
-		panic(err)
-	}
-	numFilesMu.Lock()
-	numFiles[lr.dst]++
-	numFilesMu.Unlock()
+	for len(files) > 0 {
+		logFile := files[len(files)-1]
+		files = files[:len(files)-1]
+		lext++
 
+		dstFile := filepath.Join(lr.dst, fmt.Sprintf("log.%d", lext))
+		info(" storing", dstFile[len(qdir):])
+		if err := os.Link(logFile, dstFile); err != nil {
+			panic(err)
+		}
+		numFilesMu.Lock()
+		numFiles[lr.dst]++
+		numFilesMu.Unlock()
+		checkMaxFiles()
+	}
+}
+
+func checkMaxFiles() {
 	// check maxFiles
 	numFilesMu.Lock()
 	c := 0
