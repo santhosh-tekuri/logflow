@@ -1,7 +1,6 @@
-FROM golang:1.12.7 as gobuild
-WORKDIR /go/src/github.com/santhosh-tekuri/logflow
+FROM golang:1.12.9 as gobuild
+WORKDIR /logflow
 COPY . .
-RUN go get -d ./...
 RUN CGO_ENABLED=0 go install -a
 
 FROM scratch
