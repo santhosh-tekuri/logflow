@@ -17,6 +17,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"io"
@@ -110,7 +112,7 @@ func bulk(esurl string, body []byte) error {
 		}
 		req.Header.Set("Content-Type", "application/x-ndjson")
 		req.ContentLength = int64(len(body))
-		resp, err := http.DefaultClient.Do(req)
+		resp, err := esClient.Do(req)
 		if err != nil {
 			if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
 				return uerr.Err
@@ -227,12 +229,31 @@ func checkIndexErrors(body []byte, success []int) []byte {
 	return body[from:to]
 }
 
+var esClient = &http.Client{
+	Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	},
+}
+
 func parseExportConf(m map[string]string) error {
 	s, ok := m["elasticsearch.url"]
 	if !ok {
 		return errors.New("config: elasticsearch.url missing")
 	}
 	esURL = s
+	if s, ok = m["elasticsearch.cacert"]; ok {
+		b, err := ioutil.ReadFile(s)
+		if err != nil {
+			return err
+		}
+		certPool := x509.NewCertPool()
+		certPool.AppendCertsFromPEM(b)
+		t := esClient.Transport.(*http.Transport).TLSClientConfig
+		t.InsecureSkipVerify = false
+		t.RootCAs = certPool
+	}
 	if s, ok = m["elasticsearch.basicAuth"]; ok {
 		if strings.IndexByte(s, ':') == -1 {
 			return errors.New("config: elasticsearch.basicAuth has invalid value")
