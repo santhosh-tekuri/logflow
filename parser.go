@@ -52,8 +52,29 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 		panic(err)
 	}
 	if pos != 0 {
-		if _, err := r.Seek(pos, io.SeekStart); err != nil {
+		if _, err := r.Seek(pos-1, io.SeekStart); err != nil {
 			panic(err)
+		}
+
+		// move pos to beginning of line, if it is not the case
+		b := make([]byte, 1)
+		c := 0
+		for {
+			c++
+			n, err := r.Read(b)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				panic(err)
+			}
+			if n == 1 {
+				if b[0] == '\n' {
+					break
+				}
+			} else {
+				time.Sleep(time.Second)
+			}
 		}
 	}
 
