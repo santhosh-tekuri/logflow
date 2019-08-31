@@ -17,11 +17,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/santhosh-tekuri/json"
@@ -32,6 +34,7 @@ var (
 	bulkLimit   = 2 * 1024 * 1024
 	indexLayout = "logflow-20060102"
 	esURL       = "http://elasticsearch:9200"
+	esAuth      = ""
 )
 
 func export(r *records) {
@@ -102,6 +105,9 @@ func bulk(esurl string, body []byte) error {
 			panic(err)
 		}
 		req = req.WithContext(exitCtx)
+		if esAuth != "" {
+			req.Header.Set("Authorization", esAuth)
+		}
 		req.Header.Set("Content-Type", "application/x-ndjson")
 		req.ContentLength = int64(len(body))
 		resp, err := http.DefaultClient.Do(req)
@@ -227,6 +233,12 @@ func parseExportConf(m map[string]string) error {
 		return errors.New("config: elasticsearch.url missing")
 	}
 	esURL = s
+	if s, ok = m["elasticsearch.basicAuth"]; ok {
+		if strings.IndexByte(s, ':') == -1 {
+			return errors.New("config: elasticsearch.basicAuth has invalid value")
+		}
+		esAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(s))
+	}
 	if s, ok = m["elasticsearch.bulk_size"]; ok {
 		sz, err := parseSize(s)
 		if err != nil {
