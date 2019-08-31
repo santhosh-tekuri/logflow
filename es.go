@@ -254,6 +254,18 @@ func parseExportConf(m map[string]string) error {
 		t.InsecureSkipVerify = false
 		t.RootCAs = certPool
 	}
+	if s, ok = m["elasticsearch.clientcert"]; ok {
+		key, ok := m["elasticsearch.clientkey"]
+		if !ok {
+			return errors.New("config: elasticsearch.clientkey missing")
+		}
+		clientCert, err := tls.LoadX509KeyPair(s, key)
+		if err != nil {
+			return err
+		}
+		t := esClient.Transport.(*http.Transport).TLSClientConfig
+		t.Certificates = []tls.Certificate{clientCert}
+	}
 	if s, ok = m["elasticsearch.basicAuth"]; ok {
 		if strings.IndexByte(s, ':') == -1 {
 			return errors.New("config: elasticsearch.basicAuth has invalid value")
