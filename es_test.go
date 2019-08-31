@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"reflect"
 	"strings"
 	"testing"
@@ -107,5 +108,35 @@ func Test_bulkSuccessful(t *testing.T) {
 	want := []int{11, 21, 41, -1}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatal("got:", got, "want:", want)
+	}
+}
+
+func TestCheckIndexErrors(t *testing.T) {
+	body := "index0\nmessage0\nindex1\nmessage1\nindex2\nmessage2\nindex3\nmessage3\nindex4\nmessage4\nindex5\nmessage5\n"
+	tests := []struct {
+		name    string
+		success []int
+		want    []byte
+	}{
+		{"noErrors", []int{1, 1, 1, 1, 1, 1}, nil},
+		{"allErrors", []int{0, 0, 0, 0, 0, 0}, []byte(body)},
+		{"firstError", []int{0, 1, 1, 1, 1, 1}, []byte("index0\nmessage0\n")},
+		{"lastError", []int{1, 1, 1, 1, 1, 0}, []byte("index5\nmessage5\n")},
+		{"midError", []int{1, 1, 1, 0, 1, 1}, []byte("index3\nmessage3\n")},
+		{"firstErrors", []int{0, 0, 0, 1, 1, 1}, []byte("index0\nmessage0\nindex1\nmessage1\nindex2\nmessage2\n")},
+		{"lastErrors", []int{1, 1, 1, 0, 0, 0}, []byte("index3\nmessage3\nindex4\nmessage4\nindex5\nmessage5\n")},
+		{"midErrors", []int{1, 0, 0, 0, 1, 1}, []byte("index1\nmessage1\nindex2\nmessage2\nindex3\nmessage3\n")},
+		{"twoGroups", []int{1, 0, 0, 1, 0, 0}, []byte("index1\nmessage1\nindex2\nmessage2\nindex4\nmessage4\nindex5\nmessage5\n")},
+		{"sparse", []int{1, 0, 1, 0, 1, 0}, []byte("index1\nmessage1\nindex3\nmessage3\nindex5\nmessage5\n")},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := checkIndexErrors([]byte(body), tt.success)
+			if !bytes.Equal(got, tt.want) {
+				t.Logf(" got: %q\n", got)
+				t.Logf("want: %q\n", tt.want)
+				t.Fatal()
+			}
+		})
 	}
 }

@@ -96,38 +96,37 @@ func bulkRetry(url string, body []byte) (cancelled bool) {
 var discardBuf = make([]byte, 100)
 
 func bulk(esurl string, body []byte) error {
-	req, err := http.NewRequest(http.MethodPost, esurl, bytes.NewReader(body))
-	if err != nil {
-		panic(err)
-	}
-	req = req.WithContext(exitCtx)
-	req.Header.Set("Content-Type", "application/x-ndjson")
-	req.ContentLength = int64(len(body))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
-			return uerr.Err
-		}
-		return err
-	}
-	if resp.StatusCode > 299 {
-		warn("elasticsearch returned", resp.Status)
-	} else {
-		ss, err := bulkSuccessful(bytes.NewReader(body))
+	for body != nil {
+		req, err := http.NewRequest(http.MethodPost, esurl, bytes.NewReader(body))
 		if err != nil {
-			warn("bulkResponse.decode:", err)
+			panic(err)
+		}
+		req = req.WithContext(exitCtx)
+		req.Header.Set("Content-Type", "application/x-ndjson")
+		req.ContentLength = int64(len(body))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
+				return uerr.Err
+			}
+			return err
+		}
+		if resp.StatusCode > 299 {
+			warn("elasticsearch returned", resp.Status)
+			body = nil
 		} else {
-			for i, s := range ss {
-				if s == 0 {
-					warn("log", i, "unsuccessfull")
-				} else if s == -1 {
-					panic("success==-1")
-				}
+			ss, err := bulkSuccessful(bytes.NewReader(body))
+			if err != nil {
+				warn("bulkResponse.decode:", err)
+				body = nil
+			} else {
+				body = checkIndexErrors(body, ss)
 			}
 		}
+		_, _ = io.CopyBuffer(ioutil.Discard, resp.Body, discardBuf)
+		return resp.Body.Close()
 	}
-	_, _ = io.CopyBuffer(ioutil.Discard, resp.Body, discardBuf)
-	return resp.Body.Close()
+	return nil
 }
 
 var errStop = errors.New("stop unmarshalling")
@@ -179,6 +178,47 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 		err = nil
 	}
 	return idx, err
+}
+
+func checkIndexErrors(body []byte, success []int) []byte {
+	i := 0
+	for i < len(success) {
+		if success[i] == -1 {
+			panic("success==-1")
+		} else if success[i] == 0 {
+			break
+		}
+		i++
+	}
+	if i == len(success) {
+		return nil
+	}
+
+	from := 0
+	for j := 0; j < i; j++ {
+		from += bytes.IndexByte(body[from:], '\n') + 1
+		from += bytes.IndexByte(body[from:], '\n') + 1
+	}
+	to := from + bytes.IndexByte(body[from:], '\n') + 1
+	to += bytes.IndexByte(body[to:], '\n') + 1
+	i++
+
+	for x := to; i < len(success); i++ {
+		y := x + bytes.IndexByte(body[x:], '\n') + 1
+		y += bytes.IndexByte(body[y:], '\n') + 1
+		if success[i] == -1 {
+			panic("success==-1")
+		} else if success[i] == 0 {
+			if x == to {
+				to = y
+			} else {
+				copy(body[to:], body[x:y])
+				to += y - x
+			}
+		}
+		x = y
+	}
+	return body[from:to]
 }
 
 func parseExportConf(m map[string]string) error {
