@@ -137,6 +137,7 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()
 	wait := 0 * time.Second
+	var raw rawLog
 	for {
 		for r == nil {
 			info("skipping", f[len(qdir):])
@@ -153,7 +154,6 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 			}
 		}
 		l, err := nl.readFrom(r)
-		var raw rawLog
 		switch err {
 		case io.EOF:
 			if rec != nil && wait >= multid {
