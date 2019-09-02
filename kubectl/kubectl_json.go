@@ -11,10 +11,10 @@ func (p *Pod) Unmarshal(de json.Decoder) error {
 			err = json.UnmarshalObj("Pod.Metadata", de, func(de json.Decoder, prop json.Token) (err error) {
 				switch {
 				case prop.Eq("labels"):
-					p.Metadata.Labels = make(map[string]string)
+					p.Metadata.Labels = make(map[string]interface{})
 					err = json.UnmarshalObj("Pod.Metadata.Labels", de, func(de json.Decoder, prop json.Token) (err error) {
 						k, _ := prop.String("")
-						v, err := de.Token().String("Pod.Metadata.Labels{}")
+						v, err := de.Unmarshal()
 						p.Metadata.Labels[k] = v
 						return err
 					})

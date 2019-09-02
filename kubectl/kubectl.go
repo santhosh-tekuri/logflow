@@ -65,8 +65,8 @@ func init() {
 
 type Pod struct {
 	Metadata struct {
-		Labels      map[string]string `json:"labels"`
-		Annotations map[string]string `json:"annotations"`
+		Labels      map[string]interface{} `json:"labels"`
+		Annotations map[string]string      `json:"annotations"`
 	} `json:"metadata"`
 	Spec struct {
 		NodeName string `json:"nodeName"`
