@@ -1,10 +1,13 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: logflow
+namespace: fluentd
+bases:
+  - ../elk
 resources:
+- namespace.yaml
 - rbac.yaml
 - daemonset.yaml
 configMapGenerator:
-- name: logflow
+- name: fluentd
   files:
-    - logflow.conf
+    - fluent.conf

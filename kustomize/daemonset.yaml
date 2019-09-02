@@ -3,14 +3,20 @@ kind: DaemonSet
 metadata:
   name: logflow
 spec:
+  selector:
+    matchLabels:
+      app: logflow
   template:
+    metadata:
+      labels:
+        app: logflow
     spec:
       tolerations:
       - key: node-role.kubernetes.io/master
         effect: NoSchedule
       containers:
-        - name: logflow
-          image: logflow:0.1.0
+      - name: logflow
+        image: logflow/logflow:1.0.0
         resources:
           limits:
             cpu: 0.1

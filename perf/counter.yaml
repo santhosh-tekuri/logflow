@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: counter
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: counter
+  template:
+    metadata:
+      labels:
+        app: counter
+    spec:
+      containers:
+        - name: counter
+          image: busybox:1.31.0
+          args: [/bin/sh, -c, 'i=0; while true; do echo "this is message $i"; i=$((i+1)); sleep 0.001; done']
+      nodeSelector:
+        perf: true
