@@ -47,6 +47,7 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 		f = nextLogFile(f)
 		pos = 0
 	}
+	fnext := nextLogFile(f)
 	r, err := os.Open(f)
 	if err != nil {
 		panic(err)
@@ -141,6 +142,7 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 			info("skipping", f[len(qdir):])
 			f = nextLogFile(f)
 			if fileExists(f) {
+				fnext = nextLogFile(f)
 				r, err = os.Open(f)
 				if err != nil {
 					panic(err)
@@ -160,8 +162,9 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 				}
 				continue
 			}
-			if next := nextLogFile(f); fileExists(next) {
-				f = next
+			if fileExists(fnext) {
+				f = fnext
+				fnext = nextLogFile(f)
 				_ = r.Close()
 				r, err = os.Open(f)
 				if err != nil {
