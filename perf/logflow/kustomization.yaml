@@ -12,6 +12,4 @@ patchesJson6902:
     version: v1
     kind: DaemonSet
     name: logflow
-  patch: |-
-    - op: remove
-      path: /spec/containers/0/resources
+  path: remove_resources.yaml

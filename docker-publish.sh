@@ -21,7 +21,6 @@ for arch in "${archs[@]}"; do
     echo bulding ${image}-${arch} ----------------------
     rm -f logflow
     docker run --rm -v "$PWD":/logflow -w /logflow -e GOARCH=${arch} -e CGO_ENABLED=0 golang:1.12.9 go build -a
-    file ./logflow
     docker build -t ${image}-${arch} .
     docker push ${image}-${arch}
     images+=(${image}-${arch})
@@ -34,5 +33,7 @@ for arch in "${archs[@]}"; do
   docker manifest annotate ${image} ${image}-${arch} --os linux --arch ${arch}
   docker manifest annotate ${latest} ${image}-${arch} --os linux --arch ${arch}
 done
-docker manifest push ${image}
-docker manifest push ${latest}
+docker manifest inspect ${image}
+docker manifest push --purge ${image}
+docker manifest inspect ${latest}
+docker manifest push --purge ${latest}
