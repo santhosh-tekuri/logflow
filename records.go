@@ -27,14 +27,20 @@ import (
 var byteOrder = binary.BigEndian
 
 type records struct {
-	records chan record
-	cursors map[string]*cursor
+	records     chan record
+	cursors     map[string]*cursor
+	timer       *time.Timer
+	timerActive bool
 }
 
 func newRecords() *records {
+	timer := time.NewTimer(time.Hour)
+	timer.Stop()
 	return &records{
-		records: make(chan record),
-		cursors: make(map[string]*cursor),
+		records:     make(chan record),
+		cursors:     make(map[string]*cursor),
+		timer:       timer,
+		timerActive: false,
 	}
 }
 
@@ -43,10 +49,18 @@ var errTimeout = errors.New("timeout")
 
 func (r *records) next(timeout time.Duration) (record, error) {
 	for {
+		if r.timerActive {
+			if !r.timer.Stop() {
+				<-r.timer.C
+			}
+		}
+		r.timer.Reset(timeout)
+		r.timerActive = true
 		select {
 		case <-exitCh:
 			return record{}, errExit
-		case <-time.After(timeout):
+		case <-r.timer.C:
+			r.timerActive = false
 			return record{}, errTimeout
 		case rec := <-r.records:
 			cur, ok := r.cursors[rec.dir]
