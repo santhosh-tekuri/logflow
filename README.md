@@ -6,6 +6,15 @@ kubectl create ns logflow
 kubectl apply -k kustomize
 ```
 
+```yaml
+annotations:
+  logflow.io/conf_back: |-
+    format=/^\[(?P<time>.*?)\] (?P<message>.*)$/
+    time_key=time
+    time_layout=Mon Jan _2 15:04:05 MST 2006
+    msg_key=message
+    multiline_start=/^\[(?P<time>.*?)\] /
+```
 # Performance
 
 select a worker node for peformance test and label it:

@@ -213,14 +213,14 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 			if err := raw.unmarshal(de); err != nil {
 				panic(err)
 			}
-			if rec != nil && a8n.multi.MatchString(raw.Message) {
+			if rec != nil && a8n.multi.MatchString(raw.Log) {
 				if exit := sendRec(); exit {
 					return
 				}
 			}
 			pos += int64(len(l) + 1)
 			if rec != nil {
-				rec["@message"] = rec["@message"].(string) + "\n" + raw.Message
+				rec["@msg"] = rec["@msg"].(string) + "\n" + raw.Log
 				continue
 			}
 			rec, err = a8n.parse(raw)
@@ -242,19 +242,19 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 // rawLog ---
 
 type rawLog struct {
-	Timestamp string `json:"time"`
-	Message   string `json:"log"`
+	Time string `json:"time"`
+	Log  string `json:"log"`
 }
 
 func (r *rawLog) unmarshal(de json.Decoder) error {
 	return json.UnmarshalObj("rawLog", de, func(de json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("time"):
-			r.Timestamp, err = de.Token().String("rawLog.Timestamp")
+			r.Time, err = de.Token().String("rawLog.Time")
 		case prop.Eq("log"):
-			r.Message, err = de.Token().String("rawLog.Message")
-			if r.Message != "" && r.Message[len(r.Message)-1] == '\n' {
-				r.Message = r.Message[:len(r.Message)-1]
+			r.Log, err = de.Token().String("rawLog.Log")
+			if r.Log != "" && r.Log[len(r.Log)-1] == '\n' {
+				r.Log = r.Log[:len(r.Log)-1]
 			}
 		default:
 			err = de.Skip()

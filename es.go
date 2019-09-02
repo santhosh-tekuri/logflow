@@ -48,7 +48,7 @@ func export(r *records) {
 			return
 		}
 		if err == nil {
-			ts, err := time.Parse(time.RFC3339Nano, rec.doc["@timestamp"].(string))
+			ts, err := time.Parse(time.RFC3339Nano, rec.doc["@time"].(string))
 			if err != nil {
 				panic(err)
 			}

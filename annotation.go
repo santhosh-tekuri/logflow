@@ -31,7 +31,7 @@ type annotation struct {
 }
 
 func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
-	msg, ts := raw.Message, raw.Timestamp
+	msg, ts := raw.Log, raw.Time
 	rec := make(map[string]interface{})
 	switch {
 	case a8n.format == nil:
@@ -97,8 +97,8 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 		}
 	}
 
-	rec["@message"] = msg
-	rec["@timestamp"] = ts
+	rec["@msg"] = msg
+	rec["@time"] = ts
 	return rec, nil
 }
 
@@ -119,14 +119,14 @@ func (a8n *annotation) unmarshal(s string) error {
 	if !ok {
 		return nil
 	}
-	a8n.tsKey = m["timestamp_key"]
-	a8n.tsLayout = m["timestamp_layout"]
+	a8n.tsKey = m["time_key"]
+	a8n.tsLayout = m["time_layout"]
 	if a8n.tsKey != "" && a8n.tsLayout == "" {
-		return errors.New("timestamp_layout missing")
+		return errors.New("time_layout missing")
 	}
-	a8n.msgKey = m["message_key"]
+	a8n.msgKey = m["msg_key"]
 	if a8n.msgKey == "" {
-		return errors.New("message_key missing")
+		return errors.New("msg_key missing")
 	}
 	if s == "json" {
 		a8n.format = "json"
@@ -147,7 +147,7 @@ func (a8n *annotation) unmarshal(s string) error {
 				}
 			}
 			if !found {
-				return errors.New("timestamp_key missing in regex")
+				return errors.New("time_key missing in regex")
 			}
 		}
 
@@ -159,7 +159,7 @@ func (a8n *annotation) unmarshal(s string) error {
 			}
 		}
 		if !found {
-			return errors.New("message_key missing in regex")
+			return errors.New("msg_key missing in regex")
 		}
 	}
 
