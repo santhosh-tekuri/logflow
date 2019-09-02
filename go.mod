@@ -4,6 +4,6 @@ go 1.12
 
 require (
 	github.com/fsnotify/fsnotify v1.4.7
-	github.com/santhosh-tekuri/json v0.0.0-20190830085822-23d75a035337
-	golang.org/x/sys v0.0.0-20190830080133-08d80c9d36de // indirect
+	github.com/santhosh-tekuri/json v0.0.0-20190902204708-75df271ddb0a
+	golang.org/x/sys v0.0.0-20190902133755-9109b7679e13 // indirect
 )

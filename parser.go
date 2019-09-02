@@ -249,16 +249,19 @@ type rawLog struct {
 	Log  string `json:"log"`
 }
 
+var nlSuffix = []byte(`\n"`)
+
 func (r *rawLog) unmarshal(de json.Decoder) error {
 	return json.UnmarshalObj("rawLog", de, func(de json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("time"):
 			r.Time, err = de.Token().String("rawLog.Time")
 		case prop.Eq("log"):
-			r.Log, err = de.Token().String("rawLog.Log")
-			if r.Log != "" && r.Log[len(r.Log)-1] == '\n' {
-				r.Log = r.Log[:len(r.Log)-1]
+			t := de.Token()
+			if t.Kind == json.Str && bytes.HasSuffix(t.Data, nlSuffix) {
+				t.Data = t.Data[:len(t.Data)-2]
 			}
+			r.Log, err = t.String("rawLog.Log")
 		default:
 			err = de.Skip()
 		}
