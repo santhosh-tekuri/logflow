@@ -42,6 +42,7 @@ var (
 func export(r *records) {
 	url := esURL + "/_bulk"
 	body := new(bytes.Buffer)
+	discardBuf = make([]byte, bulkLimit)
 	for {
 		rec, err := r.next(500 * time.Millisecond)
 		if err == errExit {
@@ -98,7 +99,7 @@ func bulkRetry(url string, body []byte) (cancelled bool) {
 	}
 }
 
-var discardBuf = make([]byte, 100)
+var discardBuf []byte
 
 func bulk(esurl string, body []byte) error {
 	for body != nil {
@@ -123,7 +124,7 @@ func bulk(esurl string, body []byte) error {
 			warn("elasticsearch returned", resp.Status)
 			body = nil
 		} else {
-			ss, err := bulkSuccessful(bytes.NewReader(body))
+			ss, err := bulkSuccessful(resp.Body)
 			if err != nil {
 				warn("bulkResponse.decode:", err)
 				body = nil
