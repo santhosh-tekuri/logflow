@@ -23,6 +23,7 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -232,6 +233,10 @@ func checkIndexErrors(body []byte, success []int) []byte {
 
 var esClient = &http.Client{
 	Transport: &http.Transport{
+		Dial: (&net.Dialer{
+			Timeout:   20 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
