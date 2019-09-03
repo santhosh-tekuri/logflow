@@ -43,7 +43,6 @@ var (
 func export(r *records) {
 	url := esURL + "/_bulk"
 	body := new(bytes.Buffer)
-	discardBuf = make([]byte, bulkLimit)
 	for {
 		rec, err := r.next(500 * time.Millisecond)
 		if err == errExit {
@@ -100,9 +99,10 @@ func bulkRetry(url string, body []byte) (cancelled bool) {
 	}
 }
 
-var discardBuf []byte
+var discardBuf = make([]byte, 1024)
 
 func bulk(esurl string, body []byte) error {
+	b := body[0:cap(body)]
 	for body != nil {
 		req, err := http.NewRequest(http.MethodPost, esurl, bytes.NewReader(body))
 		if err != nil {
@@ -133,7 +133,11 @@ func bulk(esurl string, body []byte) error {
 				body = checkIndexErrors(body, ss)
 			}
 		}
-		_, _ = io.CopyBuffer(ioutil.Discard, resp.Body, discardBuf)
+		buf := b
+		if body != nil {
+			buf = discardBuf
+		}
+		_, _ = io.CopyBuffer(ioutil.Discard, resp.Body, buf)
 		return resp.Body.Close()
 	}
 	return nil
