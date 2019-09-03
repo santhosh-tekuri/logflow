@@ -56,6 +56,7 @@ func markTerminated(dir string) {
 		if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
 			panic(err)
 		}
+		notifyAddFile(dir)
 	}
 	f, err := os.Create(termFile(dir))
 	if err != nil {

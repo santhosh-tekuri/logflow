@@ -118,11 +118,23 @@ func (lr *logRef) save(logFile string) {
 		if err := os.Link(logFile, dstFile); err != nil {
 			panic(err)
 		}
+		notifyAddFile(lr.dst)
 		numFilesMu.Lock()
 		numFiles[lr.dst]++
 		numFilesMu.Unlock()
 		checkMaxFiles()
 	}
+}
+
+func notifyAddFile(dir string) {
+	parsersMu.Lock()
+	if p, ok := parsers[dir]; ok {
+		select {
+		case p.added <- struct{}{}:
+		default:
+		}
+	}
+	parsersMu.Unlock()
 }
 
 func checkMaxFiles() {

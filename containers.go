@@ -121,6 +121,7 @@ func newContainer(logFile, dstDir string) (logDir, actualLogFile string) {
 
 type parser struct {
 	closed  chan struct{}
+	added   chan struct{}
 	removed chan struct{}
 }
 
@@ -132,7 +133,7 @@ var (
 func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 	wg.Add(1)
 	go func() {
-		p := parser{make(chan struct{}), make(chan struct{})}
+		p := parser{make(chan struct{}), make(chan struct{}, 1), make(chan struct{})}
 		defer func() {
 			info("finished", dir[len(qdir):])
 			parsersMu.Lock()
@@ -144,6 +145,6 @@ func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 		parsersMu.Lock()
 		parsers[dir] = p
 		parsersMu.Unlock()
-		defer parseLogs(dir, records, p.removed)
+		defer parseLogs(dir, records, p.added, p.removed)
 	}()
 }

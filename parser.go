@@ -27,7 +27,7 @@ import (
 	"github.com/santhosh-tekuri/json"
 )
 
-func parseLogs(dir string, records chan<- record, removed chan struct{}) {
+func parseLogs(dir string, records chan<- record, added chan struct{}, removed <-chan struct{}) {
 	info(" parsing", dir[len(qdir):])
 
 	// init ext & pos
@@ -52,6 +52,19 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 	if err != nil {
 		panic(err)
 	}
+	resetAdded := func() {
+		select {
+		case <-added:
+		default:
+		}
+		if fileExists(fnext) {
+			select {
+			case added <- struct{}{}:
+			default:
+			}
+		}
+	}
+	resetAdded()
 	if pos != 0 {
 		if _, err := r.Seek(pos-1, io.SeekStart); err != nil {
 			panic(err)
@@ -140,7 +153,6 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 	var raw rawLog
 	for {
 		for r == nil {
-			info("skipping", f[len(qdir):])
 			f = nextLogFile(f)
 			if fileExists(f) {
 				fnext = nextLogFile(f)
@@ -151,6 +163,7 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 				ext = extInt(f)
 				pos = 0
 				nl.reset()
+				resetAdded()
 			}
 		}
 		l, err := nl.readFrom(r)
@@ -162,18 +175,14 @@ func parseLogs(dir string, records chan<- record, removed chan struct{}) {
 				}
 				continue
 			}
-			if fileExists(fnext) {
-				f = fnext
-				fnext = nextLogFile(f)
-				_ = r.Close()
-				r, err = os.Open(f)
-				if err != nil {
-					panic(err)
+			select {
+			case <-added:
+				if fileExists(fnext) {
+					_ = r.Close()
+					r = nil
+					continue
 				}
-				ext++
-				pos = 0
-				nl.reset()
-				continue
+			default:
 			}
 			timer.Reset(d)
 			select {
