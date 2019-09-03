@@ -56,13 +56,12 @@ func (t *tail) stop(logFile string) {
 // run polls for inode changes of logFiles
 // periodically and takes action on inode change
 func (t *tail) run() {
-	const d = 250 * time.Millisecond
-	timer := time.NewTimer(d)
+	ticker := time.NewTicker(time.Second)
 	for {
 		select {
 		case <-exitCh:
 			return
-		case <-timer.C:
+		case <-ticker.C:
 			t.mu.Lock()
 			for logFile, lr := range t.m {
 				fi, err := os.Stat(logFile)
@@ -76,7 +75,6 @@ func (t *tail) run() {
 				}
 			}
 			t.mu.Unlock()
-			timer.Reset(d)
 		}
 	}
 }
