@@ -35,7 +35,7 @@ import (
 // options
 var (
 	bulkLimit   = 2 * 1024 * 1024
-	indexLayout = "logflow-20060102"
+	indexPrefix = "logflow-"
 	esURL       = "http://elasticsearch:9200"
 	esAuth      = ""
 )
@@ -49,12 +49,12 @@ func export(r *records) {
 			return
 		}
 		if err == nil {
-			ts, err := time.Parse(time.RFC3339Nano, rec.doc["@time"].(string))
-			if err != nil {
-				panic(err)
-			}
 			body.WriteString(`{"index":{"_index":"`)
-			body.WriteString(ts.Format(indexLayout))
+			body.WriteString(indexPrefix)
+			ts := rec.doc["@time"].(string)
+			body.WriteString(ts[:4])   // year
+			body.WriteString(ts[5:7])  // month
+			body.WriteString(ts[8:10]) // date
 			body.WriteString("\"}}\n")
 			if err := json.NewEncoder(body).Encode(rec.doc); err != nil {
 				panic(err)
@@ -293,8 +293,8 @@ func parseExportConf(m map[string]string) error {
 		}
 		bulkLimit = int(sz)
 	}
-	if s, ok = m["elasticsearch.index_name.layout"]; ok {
-		indexLayout = s
+	if s, ok = m["elasticsearch.index_name.prefix"]; ok {
+		indexPrefix = s
 	}
 	return nil
 }
