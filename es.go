@@ -42,7 +42,8 @@ var (
 
 func export(r *records) {
 	url := esURL + "/_bulk"
-	body := new(bytes.Buffer)
+	body := bytes.NewBuffer(make([]byte, 0, bulkLimit))
+	enc := json.NewEncoder(body)
 	for {
 		rec, err := r.next(500 * time.Millisecond)
 		if err == errExit {
@@ -56,7 +57,7 @@ func export(r *records) {
 			body.WriteString(ts[5:7])  // month
 			body.WriteString(ts[8:10]) // date
 			body.WriteString("\"}}\n")
-			if err := json.NewEncoder(body).Encode(rec.doc); err != nil {
+			if err := enc.Encode(rec.doc); err != nil {
 				panic(err)
 			}
 			body.WriteByte('\n')
