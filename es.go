@@ -143,12 +143,15 @@ func bulk(esurl string, body []byte) error {
 	return nil
 }
 
-var errStop = errors.New("stop unmarshalling")
+var (
+	errStop     = errors.New("stop unmarshalling")
+	bulkDecoder = json.NewReadDecoder(nil)
+)
 
 func bulkSuccessful(r io.Reader) ([]int, error) {
-	d := json.NewReadDecoder(r)
+	bulkDecoder.Reset(r)
 	var idx []int
-	err := json.UnmarshalObj("bulk", d, func(d json.Decoder, prop json.Token) (err error) {
+	err := json.UnmarshalObj("bulk", bulkDecoder, func(d json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("errors"):
 			var errors bool
@@ -191,6 +194,7 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 	if err == errStop {
 		err = nil
 	}
+	bulkDecoder.Reset(nil)
 	return idx, err
 }
 
