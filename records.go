@@ -37,7 +37,7 @@ func newRecords() *records {
 	timer := time.NewTimer(time.Hour)
 	timer.Stop()
 	return &records{
-		records:     make(chan record),
+		records:     make(chan record, 8000),
 		cursors:     make(map[string]*cursor),
 		timer:       timer,
 		timerActive: false,
