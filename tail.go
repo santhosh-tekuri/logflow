@@ -66,7 +66,9 @@ func (t *tail) run() {
 			for logFile, lr := range t.m {
 				fi, err := os.Stat(logFile)
 				if err != nil {
-					warn(err)
+					if !os.IsNotExist(err) {
+						warn(err)
+					}
 					continue
 				}
 				if !os.SameFile(fi, lr.fi) {
