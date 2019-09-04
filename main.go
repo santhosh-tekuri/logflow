@@ -47,14 +47,6 @@ func main() {
 
 	var wg sync.WaitGroup
 
-	tail := &tail{m: make(map[string]*logRef)}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		defer info("tailing exited")
-		tail.run()
-	}()
-
 	r := newRecords()
 	wg.Add(1)
 	go func() {
@@ -66,7 +58,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		watchContainers(kdir, qdir, tail, r.records)
+		watchContainers(r.records)
 	}()
 
 	var cancel context.CancelFunc

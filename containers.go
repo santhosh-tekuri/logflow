@@ -35,8 +35,19 @@ var (
 	maxFiles       = 10
 )
 
-func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
+func watchContainers(records chan<- record) {
 	mkdirs(qdir)
+
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	tail := &tail{m: make(map[string]*logRef)}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		defer info("tailing exited")
+		tail.run()
+	}()
 
 	w, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -47,13 +58,14 @@ func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 		panic(err)
 	}
 
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
 	logDirs := make(map[string]string)
 
 	newContainer := func(logFile string) {
-		logDir, logFile := newContainer(logFile, qdir)
+		id := strings.TrimSuffix(filepath.Base(logFile), ".log")
+		logDir := filepath.Join(qdir, id)
+		mkdirs(logDir)
+		createMetadataFile(logDir)
+		logFile = readLinks(logFile)
 		logDirs[logDir] = logFile
 		n := len(getLogFiles(logDir))
 		numFilesMu.Lock()
@@ -107,16 +119,6 @@ func watchContainers(kdir, qdir string, tail *tail, records chan<- record) {
 			fmt.Println(err)
 		}
 	}
-}
-
-func newContainer(logFile, dstDir string) (logDir, actualLogFile string) {
-	id := strings.TrimSuffix(filepath.Base(logFile), ".log")
-	logDir = filepath.Join(dstDir, id)
-	mkdirs(logDir)
-	createMetadataFile(logDir)
-
-	logFile = readLinks(logFile)
-	return logDir, logFile
 }
 
 type parser struct {
