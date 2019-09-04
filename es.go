@@ -34,7 +34,7 @@ import (
 
 // options
 var (
-	bulkLimit   = 2 * 1024 * 1024
+	bulkLimit   = 5 * 1024 * 1024
 	indexPrefix = "logflow-"
 	esURL       = "http://elasticsearch:9200"
 	esAuth      = ""
