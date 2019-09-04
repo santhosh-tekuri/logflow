@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/santhosh-tekuri/json"
@@ -198,12 +199,18 @@ func jsonUnmarshal(line []byte) (map[string]interface{}, error) {
 
 // logging ---
 
+var logMu sync.Mutex
+
 func info(a ...interface{}) {
+	logMu.Lock()
 	fmt.Printf("[INFO] ")
 	fmt.Println(a...)
+	logMu.Unlock()
 }
 
 func warn(a ...interface{}) {
+	logMu.Lock()
 	fmt.Printf("[WARN] ")
 	fmt.Println(a...)
+	logMu.Unlock()
 }
