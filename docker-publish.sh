@@ -20,7 +20,7 @@ declare -a images
 for arch in "${archs[@]}"; do
     echo bulding ${image}-${arch} ----------------------
     rm -f logflow
-    docker run --rm -v "$PWD":/logflow -w /logflow -e GOARCH=${arch} -e CGO_ENABLED=0 golang:1.12.9 go build -a
+    docker run --rm -v "$PWD":/logflow -w /logflow -e GOARCH=${arch} -e CGO_ENABLED=0 golang:1.13.0 go build -a
     docker build -t ${image}-${arch} .
     docker push ${image}-${arch}
     images+=(${image}-${arch})

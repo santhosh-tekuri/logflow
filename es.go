@@ -105,16 +105,14 @@ var discardBuf = make([]byte, 1024)
 func bulk(esurl string, body []byte) error {
 	b := body[0:cap(body)]
 	for body != nil {
-		req, err := http.NewRequest(http.MethodPost, esurl, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(exitCtx, http.MethodPost, esurl, bytes.NewReader(body))
 		if err != nil {
 			panic(err)
 		}
-		req = req.WithContext(exitCtx)
 		if esAuth != "" {
 			req.Header.Set("Authorization", esAuth)
 		}
 		req.Header.Set("Content-Type", "application/x-ndjson")
-		req.ContentLength = int64(len(body))
 		resp, err := esClient.Do(req)
 		if err != nil {
 			if uerr, ok := err.(*url.Error); ok && uerr.Err == context.Canceled {
