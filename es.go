@@ -240,6 +240,7 @@ func checkIndexErrors(body []byte, success []int) []byte {
 
 var esClient = &http.Client{
 	Transport: &http.Transport{
+		WriteBufferSize: bulkLimit,
 		DialContext: (&net.Dialer{
 			Timeout:   20 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -291,6 +292,7 @@ func parseExportConf(m map[string]string) error {
 			return err
 		}
 		bulkLimit = int(sz)
+		esClient.Transport.(*http.Transport).WriteBufferSize = bulkLimit
 	}
 	if s, ok = m["elasticsearch.index_name.prefix"]; ok {
 		indexPrefix = s
