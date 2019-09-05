@@ -286,64 +286,6 @@ func (r *rawLog) unmarshal(de json.Decoder) error {
 	})
 }
 
-// line ---
-
-type line struct {
-	buf []byte
-	off int
-}
-
-func newLine() *line {
-	return &line{buf: make([]byte, 0, 8*1024)}
-}
-
-func (l *line) readFrom(r io.Reader) ([]byte, error) {
-	// check if buffer already has line
-	if x := bytes.IndexByte(l.buf[l.off:], '\n'); x != -1 {
-		x += l.off
-		x, l.off = l.off, x+1
-		return l.buf[x : l.off-1], nil
-	}
-
-	for {
-		// make room of reading
-		unread := len(l.buf) - l.off
-		if unread == 0 {
-			l.buf, l.off = l.buf[0:0], 0
-		} else if len(l.buf) == cap(l.buf) {
-			if l.off > 0 {
-				copy(l.buf[0:], l.buf[l.off:])
-			} else {
-				b := make([]byte, 2*cap(l.buf))
-				copy(b, l.buf[l.off:])
-				l.buf = b
-			}
-			l.buf, l.off = l.buf[:unread], 0
-		}
-
-		// read more and check for line
-		i := len(l.buf)
-		n, err := r.Read(l.buf[i:cap(l.buf)])
-		l.buf = l.buf[:i+n]
-		if x := bytes.IndexByte(l.buf[i:], '\n'); x != -1 {
-			x += i
-			x, l.off = l.off, x+1
-			return l.buf[x : l.off-1], nil
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-}
-
-func (l *line) buffer() []byte {
-	return l.buf[l.off:]
-}
-
-func (l *line) reset() {
-	l.buf, l.off = l.buf[0:0], 0
-}
-
 // ---
 
 func getLogFile(dir string, ext int) string {
