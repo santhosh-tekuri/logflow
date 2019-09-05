@@ -80,22 +80,21 @@ func (p *parser) run() {
 		b := make([]byte, 1)
 		c := 0
 		for {
-			c++
 			n, err := r.Read(b)
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				panic(err)
-			}
 			if n == 1 {
+				c++
 				if b[0] == '\n' {
 					break
 				}
-			} else {
-				time.Sleep(time.Second)
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				panic(err)
 			}
 		}
+		pos += int64(c - 1)
 	}
 
 	// read .k8s
