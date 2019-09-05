@@ -20,6 +20,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/santhosh-tekuri/json"
 )
 
 type annotation struct {
@@ -28,6 +30,8 @@ type annotation struct {
 	tsLayout string
 	msgKey   string
 	multi    *regexp.Regexp
+	de       *json.ByteDecoder
+	deBuf    []byte
 }
 
 func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
@@ -36,7 +40,7 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 	switch {
 	case a8n.format == nil:
 		if len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
-			m, err := jsonUnmarshal([]byte(msg))
+			m, err := a8n.jsonUnmarshal(msg)
 			if err != nil {
 				break
 			}
@@ -56,7 +60,7 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 			}
 		}
 	case a8n.format == "json":
-		m, err := jsonUnmarshal([]byte(msg))
+		m, err := a8n.jsonUnmarshal(msg)
 		if err != nil {
 			break
 		}
@@ -100,6 +104,13 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 	rec["@msg"] = msg
 	rec["@time"] = ts
 	return rec, nil
+}
+
+func (a8n *annotation) jsonUnmarshal(msg string) (map[string]interface{}, error) {
+	a8n.deBuf = append(a8n.deBuf[:0], msg...)
+	a8n.de.Reset(a8n.deBuf)
+	m, err := a8n.de.Unmarshal()
+	return m.(map[string]interface{}), err
 }
 
 func (a8n *annotation) unmarshal(s string) error {

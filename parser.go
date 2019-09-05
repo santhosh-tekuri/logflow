@@ -107,7 +107,10 @@ func (p *parser) run() {
 	if err != nil {
 		panic(err)
 	}
-	a8n := new(annotation)
+	a8n := &annotation{
+		de:    json.NewByteDecoder(nil),
+		deBuf: make([]byte, 1024),
+	}
 	if s, ok := m["annotation"]; ok {
 		delete(m, "annotation")
 		if err := a8n.unmarshal(s.(string)); err != nil {
