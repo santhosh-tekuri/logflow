@@ -71,7 +71,7 @@ func markTerminated(dir string) {
 		}
 		return
 	}
-	if !IsEndFile(logs[len(logs)-1]) {
+	if !isEndFile(logs[len(logs)-1]) {
 		next := nextLogFile(logs[len(logs)-1])
 		if err := ioutil.WriteFile(next, []byte("END\n"), 0700); err != nil {
 			panic(err)
@@ -164,7 +164,7 @@ func getLogFiles(dir string) []string {
 	return logs
 }
 
-func IsEndFile(path string) bool {
+func isEndFile(path string) bool {
 	fi, err := os.Stat(path)
 	if err != nil {
 		panic(err)
