@@ -240,10 +240,10 @@ func checkIndexErrors(body []byte, success []int) []byte {
 
 var esClient = &http.Client{
 	Transport: &http.Transport{
-		Dial: (&net.Dialer{
+		DialContext: (&net.Dialer{
 			Timeout:   20 * time.Second,
 			KeepAlive: 30 * time.Second,
-		}).Dial,
+		}).DialContext,
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: true,
 		},
