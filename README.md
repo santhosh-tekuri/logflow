@@ -1,23 +1,127 @@
-# Logflow
+# Logflow - deveopment in progress
 
-```shell
-docker build -t logflow:0.1.0 .
-kubectl create ns logflow
-kubectl apply -k kustomize
+Logflow exports kubernetes pod logs to Elasticsearch.  
+This project goal is use minimum cpu(3 to 5%) and minimum memory, in comparison to other solutions.  
+It is written in golang and is lightweight. 
+
+# Quickstart
+
+Make sure that kubernetes nodes are using docker [json-file](https://docs.docker.com/config/containers/logging/json-file/) logging driver.
+you can check this in `/etc/docker/daemon.json` file.
+
+To use `json-file` logging driver create `/etc/docker/daemon.json` with below content and restart docker.
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3" 
+  }
+}
 ```
 
+clone this project, and edit `kustomize/logflow.conf`
+- update `elasticsearch.url`
+- update `json-file.max-file` to same value as in `/etc/docker/daemon.json`
+- leave other options to their defaults
+
+now deploy logflow into namespace `logflow`:
+
+```shell
+$ kubectl create ns logflow
+namespace/logflow created
+
+$ kubectl apply -k kustomize
+serviceaccount/logflow created
+clusterrole.rbac.authorization.k8s.io/logflow created
+clusterrolebinding.rbac.authorization.k8s.io/logflow created
+configmap/logflow-ff5k2b2t4d created
+service/elasticsearch created
+service/kibana created
+deployment.apps/elasticsearch created
+deployment.apps/kibana created
+daemonset.apps/logflow created
+```
+
+the logs are exported to elasticsearch indexes with format `logflow-yyyyMMdd`.  
+all log records has 3 mandatory fields: `@time`, `@msg` and `@k8s`
+- `@time` is in RFC3339 Nano format
+- `@k8s` is json object with fields:
+    - `namespace` namespace of pod
+    - `pod` name of the pod
+    - `container_name` name of the container
+    - `container_id` docker container id
+    - `nodename` name of node on which it is running
+    - `labels` json map of labels; note: `.` in label names are replaced with `_`
+
+you can add additions fields such as loglevel, threadname etc to log record, by configuring log parsing as explained below. 
+
+
+customize log parsing using annotation `logflow.io/conf` on pod.
+
+to parse log using regex format:
 ```yaml
 annotations:
-  logflow.io/conf_back: |-
-    format=/^\[(?P<time>.*?)\] (?P<message>.*)$/
-    time_key=time
+  logflow.io/conf: |-
+    format=/^\[(?P<timestamp>.*?)\] (?P<message>.*)$/
+    time_key=timestamp
     time_layout=Mon Jan _2 15:04:05 MST 2006
     msg_key=message
     multiline_start=/^\[(?P<time>.*?)\] /
 ```
+- regex must be enclosed in `/`
+- you can test your regex [here](https://play.golang.org/p/J7NJr_nTskK)
+    - edit `line` and `expr` in the opened page and click `Run`
+- group names `?P<GROUPNAME>` in regex will map to log record field names
+- `msg_key` allows to replace `@msg` value in log record with the specified regex group match
+- `time_key` allows to replace `@time` value in log record with the specified regex group match
+    - `time_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
+    - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
+- `multiline_start` is regexp pattern for start line of multiple lines. the loglines which do not match 
+   this regexp are treated as part of recent log message. note that regexp in `format` is matched only on the first line, not on complete multiline log message.
+
+
+to parse log using json format:
+```yaml
+annotations:
+  logflow.io/conf: |-
+    format=json
+    time_key=time
+    time_layout=Mon Jan _2 15:04:05 MST 2006
+    msg_key=message
+```
+
+- `msg_key` allows to replace `@msg` value in log record with the specified json field value
+- `time_key` allows to replace `@time` value in log record with the specified json field value
+    - `time_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
+    - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
+
 # Performance
 
-select a worker node for peformance test and label it:
+As per my tests, for 10k messages per second logflow takes 3 to 5% cpu, where as fluentd takes
+30 to 40% cpu.
+
+Below are the instructions to run performance tests to compare logflow with fluentd.  
+
+Make sure that kubernetes nodes are using docker [json-file](https://docs.docker.com/config/containers/logging/json-file/) logging driver.
+you can check this in `/etc/docker/daemon.json` file.
+
+To use `json-file` logging driver create `/etc/docker/daemon.json` with below content and restart docker.
+
+```json
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3" 
+  }
+}
+```
+
+clone this project
+
+select a worker node say `worker2` for peformance test and label it:
 
 ```shell
 $ kubectl get nodes
@@ -29,9 +133,15 @@ worker2   Ready    <none>   56d   v1.15.0
 $ kubectl label nodes worker2 perf=true
 node/worker2 labeled
 ```
-here we chose `worker2` as perf node
 
-install logflow and wait for pods:
+### logflow
+
+edit `kustomize/logflow.conf`
+- update `json-file.max-file` to same value as in `/etc/docker/daemon.json`
+- leave other options to their defaults
+
+install `logflow` and wait for pods:
+
 ```shell
 $ kubectl apply -k perf/logflow
 namespace/logflow created
@@ -56,7 +166,7 @@ logflow-xw8sn                   1/1     Running   0          17s
 
 now run counter deployment as follows:
 
-this deployment has container which produce log message per millisec.  
+this deployment has container which produces one log message per millisec.  
 it has replica 10. thus this deployment produces 10k log messages per sec.  
 all pods are launched on perf worker node using `nodeSelector`
 
@@ -77,7 +187,7 @@ KiB Swap:        0 total,        0 free,        0 used.  3481144 avail Mem
 13951 root      20   0  108572   8236   4648 S   3.5  0.4   0:00.51 logflow
 ```
 
-you can see that fluentd takes 3-5% cpu
+you can see that `fluentd` takes 3-5% cpu
 
 let us brigdown the setup:
 
@@ -97,6 +207,8 @@ deployment.apps "elasticsearch" deleted
 deployment.apps "kibana" deleted
 daemonset.apps "logflow" deleted
 ```
+
+### fluentd
 
 now install fluentd and wait for pods:
 
@@ -128,6 +240,8 @@ run counter deployment:
 $ kubectl apply -f perf/counter.yaml
 ```
 
+bash into fluentd pod which is running on perf node, to see cpu usage:
+
 ```shell script
 $ kubectl -n fluentd exec -it fluentd-z87gs bash
 root@fluentd-z87gs:/home/fluent# top
@@ -144,6 +258,8 @@ KiB Swap:        0 total,        0 free,        0 used.  3303532 avail Mem
    21 root      20   0   27944   3864   3364 S   0.0  0.1   0:00.00 bash
    28 root      20   0   50136   3940   3304 R   0.0  0.1   0:00.00 top
 ```
+
+you can see that fluentd takes 30-40% cpu
 
 let us brigdown the setup:
 
@@ -166,5 +282,3 @@ daemonset.apps "fluentd" deleted
 $ kubectl label nodes worker2 perf-
 node/worker2 labeled
 ```
-
-you can see that fluentd takes 30-40% cpu
