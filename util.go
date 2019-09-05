@@ -226,23 +226,6 @@ func sameFile(name1, name2 string) bool {
 	return os.SameFile(fi1, fi2)
 }
 
-func extInt(name string) int {
-	ext := filepath.Ext(name)
-	i, err := strconv.Atoi(ext[1:])
-	if err != nil {
-		panic(err)
-	}
-	return i
-}
-
-func stat(name string) os.FileInfo {
-	fi, err := os.Stat(name)
-	if err != nil {
-		panic(err)
-	}
-	return fi
-}
-
 func fileExists(name string) bool {
 	_, err := os.Stat(name)
 	if err != nil {

@@ -16,12 +16,10 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/santhosh-tekuri/json"
@@ -284,15 +282,4 @@ func (r *rawLog) unmarshal(de json.Decoder) error {
 		}
 		return
 	})
-}
-
-// ---
-
-func getLogFile(dir string, ext int) string {
-	return filepath.Join(dir, fmt.Sprintf("log.%d", ext))
-}
-
-func nextLogFile(name string) string {
-	i := extInt(name)
-	return filepath.Join(filepath.Dir(name), "log."+strconv.Itoa(i+1))
 }

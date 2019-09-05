@@ -16,15 +16,35 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/santhosh-tekuri/json"
 	"github.com/santhosh-tekuri/logflow/kubectl"
 )
+
+func getLogFile(dir string, ext int) string {
+	return filepath.Join(dir, fmt.Sprintf("log.%d", ext))
+}
+
+func extInt(name string) int {
+	ext := filepath.Ext(name)
+	i, err := strconv.Atoi(ext[1:])
+	if err != nil {
+		panic(err)
+	}
+	return i
+}
+
+func nextLogFile(name string) string {
+	i := extInt(name)
+	return filepath.Join(filepath.Dir(name), "log."+strconv.Itoa(i+1))
+}
 
 func createMetadataFile(dir string) {
 	k8s := filepath.Join(dir, ".k8s")
