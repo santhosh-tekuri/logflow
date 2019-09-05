@@ -122,10 +122,8 @@ func (p *parser) run() {
 		panic(err)
 	}
 
-	//file := filepath.Base(dir) + ".log"
 	var rec map[string]interface{}
 	sendRec := func() (exit bool) {
-		//rec["@file"] = file
 		rec["@k8s"] = json.RawMessage(k8s)
 	L:
 		for {
@@ -146,7 +144,6 @@ func (p *parser) run() {
 				break L
 			}
 		}
-		//fmt.Printf("%s\n", string(b))
 		rec = nil
 		return false
 	}
