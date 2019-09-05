@@ -121,21 +121,24 @@ func watchContainers(records chan<- record) {
 	}
 }
 
-type parser struct {
-	closed  chan struct{}
-	added   chan struct{}
-	removed chan struct{}
-}
-
 var (
-	parsers   = make(map[string]parser)
+	parsers   = make(map[string]*parser)
 	parsersMu = sync.Mutex{}
 )
 
 func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
+	p := &parser{
+		dir:     dir,
+		records: records,
+		closed:  make(chan struct{}),
+		added:   make(chan struct{}, 1),
+		removed: make(chan struct{}),
+	}
+	parsersMu.Lock()
+	parsers[dir] = p
+	parsersMu.Unlock()
 	wg.Add(1)
 	go func() {
-		p := parser{make(chan struct{}), make(chan struct{}, 1), make(chan struct{})}
 		defer func() {
 			info("finished", dir[len(qdir):])
 			parsersMu.Lock()
@@ -144,9 +147,6 @@ func runParser(wg *sync.WaitGroup, dir string, records chan<- record) {
 			parsersMu.Unlock()
 			wg.Done()
 		}()
-		parsersMu.Lock()
-		parsers[dir] = p
-		parsersMu.Unlock()
-		defer parseLogs(dir, records, p.added, p.removed)
+		p.run()
 	}()
 }

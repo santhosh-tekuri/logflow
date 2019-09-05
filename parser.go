@@ -27,14 +27,22 @@ import (
 	"github.com/santhosh-tekuri/json"
 )
 
-func parseLogs(dir string, records chan<- record, added chan struct{}, removed <-chan struct{}) {
-	info(" parsing", dir[len(qdir):])
+type parser struct {
+	dir     string
+	records chan<- record
+	closed  chan struct{}
+	added   chan struct{}
+	removed chan struct{}
+}
+
+func (p *parser) run() {
+	info(" parsing", p.dir[len(qdir):])
 
 	// init ext & pos
-	logs := getLogFiles(dir)
+	logs := getLogFiles(p.dir)
 	ext := extInt(logs[0])
 	pos := int64(0)
-	b, err := ioutil.ReadFile(filepath.Join(dir, ".pos"))
+	b, err := ioutil.ReadFile(filepath.Join(p.dir, ".pos"))
 	if err == nil && len(b) == 16 {
 		i := byteOrder.Uint64(b)
 		j := byteOrder.Uint64(b[8:])
@@ -42,7 +50,7 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 	}
 
 	// open file & seek
-	f := getLogFile(dir, ext)
+	f := getLogFile(p.dir, ext)
 	for !fileExists(f) {
 		f = nextLogFile(f)
 		pos = 0
@@ -54,12 +62,12 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 	}
 	resetAdded := func() {
 		select {
-		case <-added:
+		case <-p.added:
 		default:
 		}
 		if fileExists(fnext) {
 			select {
-			case added <- struct{}{}:
+			case p.added <- struct{}{}:
 			default:
 			}
 		}
@@ -93,7 +101,7 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 	}
 
 	// read .k8s
-	k8s, err := ioutil.ReadFile(filepath.Join(dir, ".k8s"))
+	k8s, err := ioutil.ReadFile(filepath.Join(p.dir, ".k8s"))
 	if err != nil {
 		b = []byte("{}")
 	}
@@ -123,13 +131,13 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 			select {
 			case <-exitCh:
 				return true
-			case <-removed:
+			case <-p.removed:
 				if r != nil && !fileExists(f) {
 					_ = r.Close()
 					r = nil
 				}
-			case records <- record{
-				dir: dir,
+			case p.records <- record{
+				dir: p.dir,
 				ext: ext,
 				pos: pos,
 				doc: rec,
@@ -176,7 +184,7 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 				continue
 			}
 			select {
-			case <-added:
+			case <-p.added:
 				if fileExists(fnext) {
 					_ = r.Close()
 					r = nil
@@ -188,7 +196,7 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 			select {
 			case <-exitCh:
 				return
-			case <-removed:
+			case <-p.removed:
 				if r != nil && !fileExists(f) {
 					_ = r.Close()
 					r = nil
@@ -210,11 +218,11 @@ func parseLogs(dir string, records chan<- record, added chan struct{}, removed <
 				_ = r.Close()
 				for {
 					select {
-					case <-removed:
+					case <-p.removed:
 						continue
 					case <-exitCh:
-					case records <- record{
-						dir: dir,
+					case p.records <- record{
+						dir: p.dir,
 						ext: -1,
 					}:
 					}
