@@ -95,11 +95,10 @@ func (lr *logRef) save(logFile string) {
 		lfile = logs[len(logs)-1]
 		lext = extInt(lfile)
 	}
-	files := make([]string, 0, maxDockerFiles)
 	if lfile != "" && sameFile(lfile, logFile) {
 		return
 	}
-	files = append(files, logFile)
+	files := []string{logFile}
 	for i := 1; true; i++ {
 		f := logFile + "." + strconv.Itoa(i)
 		if !fileExists(f) {
@@ -140,13 +139,12 @@ func notifyAddFile(dir string) {
 }
 
 func checkMaxFiles() {
-	// check maxFiles
-	numFilesMu.Lock()
 	c := 0
 	rmdir := ""
+	numFilesMu.Lock()
 	for dir, n := range numFiles {
 		f := filepath.Join(kdir, filepath.Base(dir)+".log")
-		if fileExists(f) {
+		if fileExists(f) { // live container
 			if n <= maxDockerFiles {
 				continue
 			}
