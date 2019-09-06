@@ -60,19 +60,21 @@ func parseSize(s string) (int64, error) {
 	unit := int64(1)
 	switch s[len(s)-1] {
 	case 'K':
-		unit, s = 1024, s[:len(s)-1]
+		unit = 1024
 	case 'M':
-		unit, s = 1024*1024, s[:len(s)-1]
+		unit = 1024 * 1024
 	case 'G':
-		unit, s = 1024*1024*1024, s[:len(s)-1]
+		unit = 1024 * 1024 * 1024
 	case 'T':
-		unit, s = 1024*1024*1024*1024, s[:len(s)-1]
+		unit = 1024 * 1024 * 1024 * 1024
 	case 'P':
-		unit, s = 1024*1024*1024*1024*1024, s[:len(s)-1]
+		unit = 1024 * 1024 * 1024 * 1024 * 1024
 	case 'E':
-		unit, s = 1024*1024*1024*1024*1024*1024, s[:len(s)-1]
+		unit = 1024 * 1024 * 1024 * 1024 * 1024 * 1024
+	default:
+		return 0, errors.New("invalid size: " + s)
 	}
-	sz, err := strconv.ParseInt(s, 10, 64)
+	sz, err := strconv.ParseInt(s[:len(s)-1], 10, 64)
 	if err != nil {
 		return 0, errors.New("invalid size: " + s)
 	}
