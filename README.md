@@ -18,8 +18,8 @@ It is written in golang and is lightweight.
 - once a logfile completely exported, it is deleted from `/var/log/containers/logflow`
 - thus if elasticsearch is reachable, logflow should use only diskspace only for small metadata files.
 - in case, elasticsearch is down, we keep deleting old logfile from `/var/log/containers/logflow`
-  when docker rotates new logfile. you can configure how many additional logfiles can be stored in 
-  `/var/log/containers/logflow` other than what docker keeps on disk
+  when docker rotates new logfile. you can configure how many additional logfiles can be stored 
+  other than what docker keeps on disk with `maxFiles` property in `logflow.conf` 
   
 ## Quickstart
 
