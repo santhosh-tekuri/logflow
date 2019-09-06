@@ -2,9 +2,26 @@
 
 Logflow exports kubernetes pod logs to Elasticsearch.  
 This project goal is use minimum cpu(3 to 5%) and minimum memory, in comparison to other solutions.  
-It is written in golang and is lightweight. 
+It is written in golang and is lightweight.
 
-# Quickstart
+## How it works
+
+- watches for any changes to log files in `/var/log/containers`. this directory contains symlinks
+  to docker log files
+- if new log file appears in `/var/log/containers`, resolves to its realpath
+- it creates hardlink to the log file in `/var/log/containers/logflow` directory
+- when docker rotates log file, it creates hardlink to new log file in `/var/log/containers/logflow`
+- because we create hardlinks to log files, no additional disk space is required by logflow, 
+  other than few metadata files in `/var/log/containers/logflow`
+- a new goroutine is started for each pod, which parses the log files in `/var/log/containers/logflow` 
+  and exports to elastic search.
+- once a logfile completely exported, it is deleted from `/var/log/containers/logflow`
+- thus if elasticsearch is reachable, logflow should use only diskspace only for small metadata files.
+- in case, elasticsearch is down, we keep deleting old logfile from `/var/log/containers/logflow`
+  when docker rotates new logfile. you can configure how many additional logfiles can be stored in 
+  `/var/log/containers/logflow` other than what docker keeps on disk
+  
+## Quickstart
 
 Make sure that kubernetes nodes are using docker [json-file](https://docs.docker.com/config/containers/logging/json-file/) logging driver.
 you can check this in `/etc/docker/daemon.json` file.
@@ -47,18 +64,21 @@ daemonset.apps/logflow created
 the logs are exported to elasticsearch indexes with format `logflow-yyyyMMdd`.  
 all log records has 3 mandatory fields: `@time`, `@msg` and `@k8s`
 - `@time` is in RFC3339 Nano format
+- `@msg` is log message
 - `@k8s` is json object with fields:
     - `namespace` namespace of pod
     - `pod` name of the pod
     - `container_name` name of the container
     - `container_id` docker container id
+        - you can see a specific pod instance logs in kibana, by applying filter on this field
     - `nodename` name of node on which it is running
-    - `labels` json map of labels; note: `.` in label names are replaced with `_`
+    - `labels` json object of labels
+        - if label name contains `.` it is replaced with `_`
 
 you can add additions fields such as loglevel, threadname etc to log record, by configuring log parsing as explained below. 
 
 
-customize log parsing using annotation `logflow.io/conf` on pod.
+how to parser a pod logs, is specified by adding annotation `logflow.io/conf` on pod.
 
 to parse log using regex format:
 ```yaml
@@ -97,12 +117,21 @@ annotations:
     - `time_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
 
-# Performance
+NOTE:
+
+- logflow does not watch for changes to annotation `logflow.io/conf`
+- logflow reads this annotation only when pod is deployed
+- so any changes to this annotation, after poid is deployed are not reflected in logflow
+
+## Performance
 
 As per my tests, for 10k messages per second logflow takes 3 to 5% cpu, where as fluentd takes
 30 to 40% cpu.
 
 Below are the instructions to run performance tests to compare logflow with fluentd.  
+
+Make sure that you have minimum 4G memory on each kubernetes node. 
+because we are deploying elasticsearch and kibana.
 
 Make sure that kubernetes nodes are using docker [json-file](https://docs.docker.com/config/containers/logging/json-file/) logging driver.
 you can check this in `/etc/docker/daemon.json` file.
@@ -121,7 +150,7 @@ To use `json-file` logging driver create `/etc/docker/daemon.json` with below co
 
 clone this project
 
-select a worker node say `worker2` for peformance test and label it:
+select a worker node say `worker2` for peformance test and `perf` label:
 
 ```shell
 $ kubectl get nodes
@@ -187,7 +216,7 @@ KiB Swap:        0 total,        0 free,        0 used.  3481144 avail Mem
 13951 root      20   0  108572   8236   4648 S   3.5  0.4   0:00.51 logflow
 ```
 
-you can see that `fluentd` takes 3-5% cpu
+you can see that `logflow` takes 3-5% cpu
 
 let us brigdown the setup:
 
@@ -259,7 +288,7 @@ KiB Swap:        0 total,        0 free,        0 used.  3303532 avail Mem
    28 root      20   0   50136   3940   3304 R   0.0  0.1   0:00.00 top
 ```
 
-you can see that fluentd takes 30-40% cpu
+you can see that `fluentd` takes 30-40% cpu
 
 let us brigdown the setup:
 
