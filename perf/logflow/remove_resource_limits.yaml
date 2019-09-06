@@ -1,0 +1,10 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: logflow
+spec:
+  template:
+    spec:
+      containers:
+        - name: logflow
+          resources: null
