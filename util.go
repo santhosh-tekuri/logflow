@@ -36,15 +36,13 @@ func readConf(r io.Reader) (map[string]string, error) {
 	br := bufio.NewReader(r)
 	for {
 		l, err := br.ReadString('\n')
-		if strings.HasSuffix(l, "\n") {
-			l = strings.TrimSuffix(l, "\n")
-		}
-		if strings.TrimSpace(l) != "" && l[0] != '#' {
+		l = strings.TrimSpace(l)
+		if l != "" && l[0] != '#' {
 			eq := strings.IndexByte(l, '=')
 			if eq == -1 {
 				return nil, err
 			}
-			m[l[:eq]] = l[eq+1:]
+			m[strings.TrimSpace(l[:eq])] = strings.TrimSpace(l[eq+1:])
 		}
 		if err != nil {
 			if err != io.EOF {
