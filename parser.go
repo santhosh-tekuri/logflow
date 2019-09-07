@@ -113,7 +113,7 @@ func (p *parser) run() {
 	if s, ok := m["annotation"]; ok {
 		delete(m, "annotation")
 		if err := a8n.unmarshal(s.(string)); err != nil {
-			warn(err)
+			warn("error in annotation of", m["pod"], "in", m["namespace"], ":", err)
 		}
 	}
 	k8s, err = json.Marshal(m)
