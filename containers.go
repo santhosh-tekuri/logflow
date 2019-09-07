@@ -67,7 +67,7 @@ func watchContainers(records chan<- record) {
 			return
 		}
 		mkdirs(logDir)
-		createMetadataFile(logDir)
+		createMetadataFile(logDir, meta)
 		logFile = readLinks(logFile)
 		logDirs[logDir] = logFile
 		n := len(getLogFiles(logDir))
