@@ -123,6 +123,8 @@ NOTE:
 - logflow reads this annotation only when pod is deployed
 - so any changes to this annotation, after poid is deployed are not reflected in logflow
 
+if a pod has annotation `logflow.io/ignore`, then its logs are not exported.
+
 ## Performance
 
 As per my tests, for 10k messages per second logflow takes 3 to 5% cpu, where as fluentd takes

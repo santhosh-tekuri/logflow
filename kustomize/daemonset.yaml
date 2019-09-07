@@ -10,6 +10,8 @@ spec:
     metadata:
       labels:
         app: logflow
+    annotations:
+      logflow.io/ignore: yes
     spec:
       tolerations:
       - key: node-role.kubernetes.io/master

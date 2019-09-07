@@ -94,11 +94,5 @@ func parseConf(path string) error {
 			return err
 		}
 	}
-	if s, ok := m["annotation"]; ok {
-		a8nName = s
-	}
-	if s, ok := m["dot_replacer"]; ok {
-		dotAlt = s
-	}
 	return parseExportConf(m)
 }

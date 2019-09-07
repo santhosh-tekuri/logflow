@@ -46,11 +46,10 @@ func nextLogFile(name string) string {
 	return filepath.Join(filepath.Dir(name), "log."+strconv.Itoa(i+1))
 }
 
-func createMetadataFile(dir string) {
+func createMetadataFile(dir string, meta map[string]interface{}) {
 	k8s := filepath.Join(dir, ".k8s")
 	if !fileExists(k8s) {
-		m := fetchMetadata(filepath.Base(dir))
-		b, err := json.Marshal(m)
+		b, err := json.Marshal(meta)
 		if err != nil {
 			panic(err)
 		}
@@ -96,10 +95,10 @@ func hasLogs(dir string) bool {
 	return true
 }
 
-// options
-var (
-	a8nName = "logflow.io/conf"
-	dotAlt  = "_"
+const (
+	a8nConf   = "logflow.io/conf"
+	a8nIgnore = "logflow.io/ignore"
+	dotAlt    = "_"
 )
 
 func fetchMetadata(logName string) map[string]interface{} {
@@ -112,18 +111,19 @@ func fetchMetadata(logName string) map[string]interface{} {
 		warn(err)
 		return k8s
 	}
-	if dotAlt != "" {
-		for k, v := range pod.Metadata.Labels {
-			nk := strings.ReplaceAll(k, ".", dotAlt[:1])
-			if k != nk {
-				delete(pod.Metadata.Labels, k)
-				pod.Metadata.Labels[nk] = v
-			}
+	if _, ok := pod.Metadata.Annotations[a8nIgnore]; ok {
+		return nil
+	}
+	for k, v := range pod.Metadata.Labels {
+		nk := strings.ReplaceAll(k, ".", dotAlt[:1])
+		if k != nk {
+			delete(pod.Metadata.Labels, k)
+			pod.Metadata.Labels[nk] = v
 		}
 	}
 	k8s["labels"] = pod.Metadata.Labels
 	k8s["nodename"] = pod.Spec.NodeName
-	if s, ok := pod.Metadata.Annotations[a8nName]; ok {
+	if s, ok := pod.Metadata.Annotations[a8nConf]; ok {
 		k8s["annotation"] = s
 	}
 	return k8s

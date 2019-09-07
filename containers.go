@@ -15,7 +15,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,6 +62,10 @@ func watchContainers(records chan<- record) {
 	newContainer := func(logFile string) {
 		id := strings.TrimSuffix(filepath.Base(logFile), ".log")
 		logDir := filepath.Join(qdir, id)
+		meta := fetchMetadata(id)
+		if meta == nil {
+			return
+		}
 		mkdirs(logDir)
 		createMetadataFile(logDir)
 		logFile = readLinks(logFile)
@@ -110,13 +113,15 @@ func watchContainers(records chan<- record) {
 				if strings.HasSuffix(event.Name, ".log") {
 					id := strings.TrimSuffix(filepath.Base(event.Name), ".log")
 					logDir := filepath.Join(qdir, id)
-					markTerminated(logDir)
-					tail.stop(logDirs[logDir])
-					delete(logDirs, logDir)
+					if _, ok := logDirs[logDir]; ok {
+						markTerminated(logDir)
+						tail.stop(logDirs[logDir])
+						delete(logDirs, logDir)
+					}
 				}
 			}
 		case err := <-w.Errors:
-			fmt.Println(err)
+			warn(err)
 		}
 	}
 }
