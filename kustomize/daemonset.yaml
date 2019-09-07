@@ -16,7 +16,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: logflow
-        image: logflow/logflow:1.0.0
+        image: santhoshkt/logflow:1.0.0
         resources:
           limits:
             cpu: 0.1
