@@ -5,8 +5,9 @@ if [[ $# -ne 1 ]]; then
     echo "Usage: docker-publish.sh TAG"
     exit 1
 fi
-image=logflow/logflow:$1
-latest=logflow/logflow
+name=santhoshkt/logflow
+image=$name:$1
+latest=$name:latest
 
 cat <<EOF > Dockerfile
 FROM scratch
