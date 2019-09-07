@@ -61,10 +61,10 @@ deployment.apps/kibana created
 daemonset.apps/logflow created
 ```
 
-the logs are exported to elasticsearch indexes with format `logflow-yyyyMMdd`.  
-all log records has 3 mandatory fields: `@time`, `@msg` and `@k8s`
-- `@time` is in RFC3339 Nano format
-- `@msg` is log message
+the logs are exported to elasticsearch indexes with format `logflow-yyyymmdd`.  
+all log records has 3 mandatory fields: `@timestamp`, `@message` and `@k8s`
+- `@timestamp` is in RFC3339 Nano format
+- `@message` is log message
 - `@k8s` is json object with fields:
     - `namespace` namespace of pod
     - `pod` name of the pod
@@ -85,18 +85,18 @@ to parse log using regex format:
 annotations:
   logflow.io/conf: |-
     format=/^\[(?P<timestamp>.*?)\] (?P<message>.*)$/
-    time_key=timestamp
-    time_layout=Mon Jan _2 15:04:05 MST 2006
-    msg_key=message
+    timestamp_key=timestamp
+    timestamp_layout=Mon Jan _2 15:04:05 MST 2006
+    message_key=message
     multiline_start=/^\[(?P<time>.*?)\] /
 ```
 - regex must be enclosed in `/`
 - you can test your regex [here](https://play.golang.org/p/J7NJr_nTskK)
     - edit `line` and `expr` in the opened page and click `Run`
 - group names `?P<GROUPNAME>` in regex will map to log record field names
-- `msg_key` allows to replace `@msg` value in log record with the specified regex group match
-- `time_key` allows to replace `@time` value in log record with the specified regex group match
-    - `time_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
+- `message_key` allows to replace `@message` value in log record with the specified regex group match
+- `timestamp_key` allows to replace `@timestamp` value in log record with the specified regex group match
+    - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
 - `multiline_start` is regexp pattern for start line of multiple lines. the loglines which do not match 
    this regexp are treated as part of recent log message. note that regexp in `format` is matched only on the first line, not on complete multiline log message.
@@ -107,14 +107,14 @@ to parse log using json format:
 annotations:
   logflow.io/conf: |-
     format=json
-    time_key=time
-    time_layout=Mon Jan _2 15:04:05 MST 2006
-    msg_key=message
+    timestamp_key=time
+    timestamp_layout=Mon Jan _2 15:04:05 MST 2006
+    message_key=message
 ```
 
-- `msg_key` allows to replace `@msg` value in log record with the specified json field value
-- `time_key` allows to replace `@time` value in log record with the specified json field value
-    - `time_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
+- `message_key` allows to replace `@message` value in log record with the specified json field value
+- `timestamp_key` allows to replace `@timestamp` value in log record with the specified json field value
+    - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
 
 NOTE:

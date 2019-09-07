@@ -237,7 +237,7 @@ func (p *parser) run() {
 			}
 			pos += int64(len(l) + 1)
 			if rec != nil {
-				rec["@msg"] = rec["@msg"].(string) + "\n" + raw.Log
+				rec["@message"] = rec["@message"].(string) + "\n" + raw.Log
 				continue
 			}
 			rec, err = a8n.parse(raw)
