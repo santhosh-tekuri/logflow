@@ -71,7 +71,7 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 					case []interface{}:
 						suffix = "$arr"
 					}
-					if suffix != "" && !strings.HasPrefix(k, suffix) {
+					if suffix != "" && !strings.HasSuffix(k, suffix) {
 						delete(rec, k)
 						rec[k+suffix] = v
 					}
@@ -108,7 +108,7 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 				case []interface{}:
 					suffix = "$arr"
 				}
-				if suffix != "" && !strings.HasPrefix(k, suffix) {
+				if suffix != "" && !strings.HasSuffix(k, suffix) {
 					delete(rec, k)
 					rec[k+suffix] = v
 				}
