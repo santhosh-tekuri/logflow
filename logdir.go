@@ -95,11 +95,6 @@ func hasLogs(dir string) bool {
 	return true
 }
 
-const (
-	a8nConf = "logflow.io/conf"
-	dotAlt  = "_"
-)
-
 func fetchMetadata(logName string) map[string]interface{} {
 	k8s := parseLogName(logName)
 	if k8s == nil {
@@ -111,7 +106,7 @@ func fetchMetadata(logName string) map[string]interface{} {
 		return k8s
 	}
 	for k, v := range pod.Metadata.Labels {
-		nk := strings.ReplaceAll(k, ".", dotAlt[:1])
+		nk := strings.ReplaceAll(k, ".", "_")
 		if k != nk {
 			delete(pod.Metadata.Labels, k)
 			pod.Metadata.Labels[nk] = v
@@ -119,7 +114,10 @@ func fetchMetadata(logName string) map[string]interface{} {
 	}
 	k8s["labels"] = pod.Metadata.Labels
 	k8s["nodename"] = pod.Spec.NodeName
-	if s, ok := pod.Metadata.Annotations[a8nConf]; ok {
+	cname := k8s["container_name"].(string)
+	if s, ok := pod.Metadata.Annotations["logflow.io/conf_"+cname]; ok {
+		k8s["annotation"] = s
+	} else if s, ok := pod.Metadata.Annotations["logflow.io/conf"]; ok {
 		k8s["annotation"] = s
 	}
 	return k8s

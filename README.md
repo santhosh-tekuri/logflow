@@ -129,6 +129,9 @@ annotations:
     format=null
 ```
 
+If pod has multiple containers with different log format use `logflow.io/conf_{CONTAINER_NAME}` annotation
+to target specific container. For example to target container named `nginx`, use annotation `logflow.io/conf_nginx`
+
 NOTE:
 
 - logflow does not watch for changes to annotation `logflow.io/conf`
