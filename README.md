@@ -80,7 +80,7 @@ you can add additions fields such as loglevel, threadname etc to log record, by 
 
 how to parser a pod logs, is specified by adding annotation `logflow.io/conf` on pod.
 
-to parse log using regex format:
+to parse log using [regex](https://github.com/google/re2/wiki/Syntax) format:
 ```yaml
 annotations:
   logflow.io/conf: |-
@@ -116,6 +116,18 @@ annotations:
 - `timestamp_key` allows to replace `@timestamp` value in log record with the specified json field value
     - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
+- top level non-string fields are suffixed with their json type. consider an example where one pod log has
+  `error` field with string value and another pod log has `error` field with object having more details. in 
+  such cases, elasticsearch throws `mapper_parsing_exception`. to avoid this, logflow renames the `error` field
+  with object value to `error$obj`. this avoids mapping exceptions to large extent without additional manual 
+  configuration
+
+to ignore logs of a pod:
+```yaml
+annotations:
+  logflow.io/conf: |-
+    format=null
+```
 
 NOTE:
 

@@ -96,9 +96,8 @@ func hasLogs(dir string) bool {
 }
 
 const (
-	a8nConf   = "logflow.io/conf"
-	a8nIgnore = "logflow.io/ignore"
-	dotAlt    = "_"
+	a8nConf = "logflow.io/conf"
+	dotAlt  = "_"
 )
 
 func fetchMetadata(logName string) map[string]interface{} {
@@ -110,9 +109,6 @@ func fetchMetadata(logName string) map[string]interface{} {
 	if err != nil {
 		warn(err)
 		return k8s
-	}
-	if _, ok := pod.Metadata.Annotations[a8nIgnore]; ok {
-		return nil
 	}
 	for k, v := range pod.Metadata.Labels {
 		nk := strings.ReplaceAll(k, ".", dotAlt[:1])

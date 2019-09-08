@@ -63,8 +63,11 @@ func watchContainers(records chan<- record) {
 		id := strings.TrimSuffix(filepath.Base(logFile), ".log")
 		logDir := filepath.Join(qdir, id)
 		meta := fetchMetadata(id)
-		if meta == nil {
-			return
+		if s, ok := meta["annotation"]; ok {
+			var a8n annotation
+			if err := a8n.unmarshal(s.(string)); err == nil && a8n.format == "null" {
+				return
+			}
 		}
 		mkdirs(logDir)
 		createMetadataFile(logDir, meta)

@@ -161,8 +161,8 @@ func (a8n *annotation) unmarshal(s string) error {
 	if a8n.msgKey == "" {
 		return errors.New("message_key missing")
 	}
-	if s == "json" {
-		a8n.format = "json"
+	if s == "json" || s == "null" {
+		a8n.format = s
 		a8n.multi = nil
 	} else {
 		re, err := compileRegex(s)
