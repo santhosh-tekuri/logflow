@@ -53,7 +53,7 @@ func Test_bulkSuccessful(t *testing.T) {
 				 "result": "not_found",
 				 "_shards": {
 					"total": 2,
-					"successful": 21,
+					"successful": 0,
 					"failed": 0
 				 },
 				 "status": 404,
@@ -87,11 +87,7 @@ func Test_bulkSuccessful(t *testing.T) {
 				 "result": "updated",
 				 "error": {
 					"type": "mapper_parsing_exception",
-					"reason": "failed to parse",
-					"caused_by": {
-					  "type": "json_parse_exception",
-					  "reason": "Unexpected character ('\\' (code 92)): expected a valid value (number, String, array, object, 'true', 'false' or 'null')\n at [Source: org.elasticsearch.common.bytes.BytesReference$MarkSupportingStreamInputWrapper@50751cab; line: 1, column: 41]"
-					}
+					"reason": "failed to parse"
 				  },
 				 "status": 200,
 				 "_seq_no" : 3,
@@ -101,13 +97,15 @@ func Test_bulkSuccessful(t *testing.T) {
 		]
 	 }
 	`
-	got, err := bulkSuccessful(strings.NewReader(s))
+	got, err := bulkErrors(strings.NewReader(s))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []int{11, 21, 41, -1}
+	want := []string{"", "successful=0", "", `{"type":"mapper_parsing_exception","reason":"failed to parse"}`}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatal("got:", got, "want:", want)
+		t.Log(" got:", got)
+		t.Log("want:", want)
+		t.Fail()
 	}
 }
 
@@ -131,7 +129,15 @@ func TestCheckIndexErrors(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := checkIndexErrors([]byte(body), tt.success)
+			var errors []string
+			for _, s := range tt.success {
+				err := ""
+				if s == 0 {
+					err = "successful=0"
+				}
+				errors = append(errors, err)
+			}
+			got := checkIndexErrors([]byte(body), errors)
 			if !bytes.Equal(got, tt.want) {
 				t.Logf(" got: %q\n", got)
 				t.Logf("want: %q\n", tt.want)

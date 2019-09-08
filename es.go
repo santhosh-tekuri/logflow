@@ -104,7 +104,7 @@ var discardBuf = make([]byte, 1024)
 
 func bulk(esurl string, body []byte) error {
 	b := body[0:cap(body)]
-	for body != nil {
+	for len(body) > 0 {
 		req, err := http.NewRequestWithContext(exitCtx, http.MethodPost, esurl, bytes.NewReader(body))
 		if err != nil {
 			panic(err)
@@ -124,12 +124,12 @@ func bulk(esurl string, body []byte) error {
 			warn("elasticsearch returned", resp.Status)
 			body = nil
 		} else {
-			ss, err := bulkSuccessful(resp.Body)
+			errors, err := bulkErrors(resp.Body)
 			if err != nil {
 				warn("bulkResponse.decode:", err)
 				body = nil
 			} else {
-				body = checkIndexErrors(body, ss)
+				body = checkIndexErrors(body, errors)
 			}
 		}
 		buf := b
@@ -147,9 +147,9 @@ var (
 	bulkDecoder = json.NewReadDecoder(nil)
 )
 
-func bulkSuccessful(r io.Reader) ([]int, error) {
+func bulkErrors(r io.Reader) ([]string, error) {
 	bulkDecoder.Reset(r)
-	var idx []int
+	var errors []string
 	err := json.UnmarshalObj("bulk", bulkDecoder, func(d json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("errors"):
@@ -164,15 +164,20 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 					return json.UnmarshalObj("index", d, func(d json.Decoder, prop json.Token) (err error) {
 						switch {
 						case prop.Eq("error"):
-							idx = append(idx, -1)
-							err = d.Skip()
+							var b []byte
+							b, err = d.Marshal()
+							errors = append(errors, string(b))
 						case prop.Eq("_shards"):
 							return json.UnmarshalObj("_shards", d, func(d json.Decoder, prop json.Token) (err error) {
 								switch {
 								case prop.Eq("successful"):
 									var i int
 									i, err = d.Token().Int("successful")
-									idx = append(idx, i)
+									if i > 0 {
+										errors = append(errors, "")
+									} else {
+										errors = append(errors, "successful=0")
+									}
 								default:
 									err = d.Skip()
 								}
@@ -194,46 +199,28 @@ func bulkSuccessful(r io.Reader) ([]int, error) {
 		err = nil
 	}
 	bulkDecoder.Reset(nil)
-	return idx, err
+	return errors, err
 }
 
-func checkIndexErrors(body []byte, success []int) []byte {
+func checkIndexErrors(body []byte, errors []string) []byte {
+	from, to := 0, 0
 	i := 0
-	for i < len(success) {
-		if success[i] == -1 {
-			panic("success==-1")
-		} else if success[i] == 0 {
-			break
-		}
-		i++
-	}
-	if i == len(success) {
-		return nil
-	}
-
-	from := 0
-	for j := 0; j < i; j++ {
-		from += bytes.IndexByte(body[from:], '\n') + 1
-		from += bytes.IndexByte(body[from:], '\n') + 1
-	}
-	to := from + bytes.IndexByte(body[from:], '\n') + 1
-	to += bytes.IndexByte(body[to:], '\n') + 1
-	i++
-
-	for x := to; i < len(success); i++ {
-		y := x + bytes.IndexByte(body[x:], '\n') + 1
-		y += bytes.IndexByte(body[y:], '\n') + 1
-		if success[i] == -1 {
-			panic("success==-1")
-		} else if success[i] == 0 {
-			if x == to {
-				to = y
+	for _, err := range errors {
+		j := i + bytes.IndexByte(body[i:], '\n') + 1
+		k := j + bytes.IndexByte(body[j:], '\n') + 1
+		switch err {
+		case "":
+		case "successful=0":
+			if to == 0 {
+				from, to = i, k
 			} else {
-				copy(body[to:], body[x:y])
-				to += y - x
+				copy(body[to:], body[i:k])
+				to += k - i
 			}
+		default:
+			warn("indexing failed for", string(body[j:k]), " with error", err)
 		}
-		x = y
+		i = k
 	}
 	return body[from:to]
 }
