@@ -220,6 +220,8 @@ KiB Swap:        0 total,        0 free,        0 used.  3481144 avail Mem
 
 you can see that `logflow` takes 3-5% cpu
 
+NOTE: at startup it may take more cpu than above because of old logs, but after some time cpu will be low. 
+
 let us brigdown the setup:
 
 ```shell
