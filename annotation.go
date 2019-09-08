@@ -25,7 +25,7 @@ import (
 )
 
 type annotation struct {
-	format   interface{} // "json" or *regexp.Regexp
+	format   interface{} // nil or "null" or "json" or *regexp.Regexp
 	tsKey    string
 	tsLayout string
 	msgKey   string
@@ -36,70 +36,86 @@ type annotation struct {
 
 func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 	msg, ts := raw.Log, raw.Time
-	rec := make(map[string]interface{})
+	var rec map[string]interface{}
+	var err error
 	switch {
 	case a8n.format == nil:
 		if len(msg) >= 2 && msg[0] == '{' && msg[len(msg)-1] == '}' {
-			m, err := a8n.jsonUnmarshal(msg)
+			rec, err = a8n.jsonUnmarshal(msg)
 			if err != nil {
 				break
 			}
-			for k, v := range m {
+			for k, v := range rec {
 				if k == "msg" || k == "message" {
 					msg = fmt.Sprint(v)
+					delete(rec, k)
 				} else {
 					if k == "time" || k == "timestamp" || k == "ts" {
 						sv := fmt.Sprint(v)
 						if _, err := time.Parse(time.RFC3339Nano, sv); err == nil {
 							ts = sv
+							delete(rec, k)
 							continue
 						}
 					}
+					var suffix string
 					switch v.(type) {
 					case string:
 						rec[k] = v
 					case float64:
-						rec[k+"$num"] = v
+						suffix = "$num"
 					case bool:
-						rec[k+"$bool"] = v
+						suffix = "$bool"
 					case map[string]interface{}:
-						rec[k+"$obj"] = v
+						suffix = "$obj"
 					case []interface{}:
-						rec[k+"$arr"] = v
+						suffix = "$arr"
+					}
+					if suffix != "" && !strings.HasPrefix(k, suffix) {
+						delete(rec, k)
+						rec[k+suffix] = v
 					}
 				}
 			}
 		}
 	case a8n.format == "json":
-		m, err := a8n.jsonUnmarshal(msg)
+		rec, err = a8n.jsonUnmarshal(msg)
 		if err != nil {
 			break
 		}
-		for k, v := range m {
+		for k, v := range rec {
 			if k == a8n.msgKey {
 				msg = fmt.Sprint(v)
+				delete(rec, k)
 			} else {
 				if k == a8n.tsKey {
 					if t, err := time.Parse(a8n.tsLayout, fmt.Sprint(v)); err == nil {
 						ts = t.Format(time.RFC3339Nano)
+						delete(rec, k)
 						continue
 					}
 				}
+				var suffix string
 				switch v.(type) {
 				case string:
 					rec[k] = v
 				case float64:
-					rec[k+"$num"] = v
+					suffix = "$num"
 				case bool:
-					rec[k+"$bool"] = v
+					suffix = "$bool"
 				case map[string]interface{}:
-					rec[k+"$obj"] = v
+					suffix = "$obj"
 				case []interface{}:
-					rec[k+"$arr"] = v
+					suffix = "$arr"
+				}
+				if suffix != "" && !strings.HasPrefix(k, suffix) {
+					delete(rec, k)
+					rec[k+suffix] = v
 				}
 			}
 		}
 	default:
+		rec = make(map[string]interface{})
 		re := a8n.format.(*regexp.Regexp)
 		g := re.FindStringSubmatch(msg)
 		if len(g) == 0 {
@@ -123,6 +139,9 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 		}
 	}
 
+	if rec == nil {
+		rec = make(map[string]interface{})
+	}
 	rec["@message"] = msg
 	rec["@timestamp"] = ts
 	return rec, nil
