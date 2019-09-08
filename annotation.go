@@ -55,7 +55,18 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 							continue
 						}
 					}
-					rec[k] = v
+					switch v.(type) {
+					case string:
+						rec[k] = v
+					case float64:
+						rec[k+"$num"] = v
+					case bool:
+						rec[k+"$bool"] = v
+					case map[string]interface{}:
+						rec[k+"$obj"] = v
+					case []interface{}:
+						rec[k+"$arr"] = v
+					}
 				}
 			}
 		}
@@ -74,7 +85,18 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 						continue
 					}
 				}
-				rec[k] = v
+				switch v.(type) {
+				case string:
+					rec[k] = v
+				case float64:
+					rec[k+"$num"] = v
+				case bool:
+					rec[k+"$bool"] = v
+				case map[string]interface{}:
+					rec[k+"$obj"] = v
+				case []interface{}:
+					rec[k+"$arr"] = v
+				}
 			}
 		}
 	default:
