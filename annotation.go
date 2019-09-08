@@ -154,21 +154,17 @@ func (a8n *annotation) jsonUnmarshal(msg string) (map[string]interface{}, error)
 	return m.(map[string]interface{}), err
 }
 
-func (a8n *annotation) unmarshal(s string) error {
-	m, err := readConf(strings.NewReader(s))
+func (a8n *annotation) unmarshal(format string) error {
+	m, err := readConf(strings.NewReader(format))
 	if err != nil {
 		return err
 	}
-	if s, ok := m["multiline_start"]; ok {
-		re, err := compileRegex(s)
-		if err != nil {
-			return err
-		}
-		a8n.multi = re
-	}
-
-	s, ok := m["format"]
+	format, ok := m["format"]
 	if !ok {
+		return nil
+	}
+	if format == "null" {
+		a8n.format = "null"
 		return nil
 	}
 	a8n.tsKey = m["timestamp_key"]
@@ -180,11 +176,11 @@ func (a8n *annotation) unmarshal(s string) error {
 	if a8n.msgKey == "" {
 		return errors.New("message_key missing")
 	}
-	if s == "json" || s == "null" {
-		a8n.format = s
+	if format == "json" {
+		a8n.format = "json"
 		a8n.multi = nil
 	} else {
-		re, err := compileRegex(s)
+		re, err := compileRegex(format)
 		if err != nil {
 			return err
 		}
@@ -212,6 +208,14 @@ func (a8n *annotation) unmarshal(s string) error {
 		}
 		if !found {
 			return errors.New("message_key missing in regex")
+		}
+
+		if s, ok := m["multiline_start"]; ok {
+			re, err := compileRegex(s)
+			if err != nil {
+				return err
+			}
+			a8n.multi = re
 		}
 	}
 

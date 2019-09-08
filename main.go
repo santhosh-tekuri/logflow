@@ -65,7 +65,8 @@ func main() {
 	exitCtx, cancel = context.WithCancel(context.Background())
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-	<-ch
+	s := <-ch
+	info("received", s)
 	close(exitCh)
 	cancel()
 	wg.Wait()
