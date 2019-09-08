@@ -214,8 +214,8 @@ it has replica 10. thus this deployment produces 10k log messages per sec.
 all pods are launched on perf worker node using `nodeSelector`
 
 ```shell
-$ kubectl apply -k perf/counter.yaml
-deployment.apps/counter configured
+$ kubectl apply -f perf/counter.yaml
+deployment.apps/counter created
 ```
 
 to see cpu usage of logflow, ssh to perf worker node and run `top` command, press `o` and type `COMMAND=logflow`:  
@@ -283,6 +283,7 @@ run counter deployment:
 
 ```shell script
 $ kubectl apply -f perf/counter.yaml
+deployment.apps/counter created
 ```
 
 bash into fluentd pod which is running on perf node, to see cpu usage:
