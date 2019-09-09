@@ -115,9 +115,9 @@ func fetchMetadata(logName string) map[string]interface{} {
 	k8s["labels"] = pod.Metadata.Labels
 	k8s["nodename"] = pod.Spec.NodeName
 	cname := k8s["container_name"].(string)
-	if s, ok := pod.Metadata.Annotations["logflow.io/conf_"+cname]; ok {
+	if s, ok := pod.Metadata.Annotations["logflow.io/parser_"+cname]; ok {
 		k8s["annotation"] = s
-	} else if s, ok := pod.Metadata.Annotations["logflow.io/conf"]; ok {
+	} else if s, ok := pod.Metadata.Annotations["logflow.io/parser"]; ok {
 		k8s["annotation"] = s
 	}
 	return k8s

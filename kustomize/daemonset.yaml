@@ -11,7 +11,7 @@ spec:
       labels:
         app: logflow
       annotations:
-        logflow.io/conf: |-
+        logflow.io/parser: |-
           format=null
     spec:
       tolerations:

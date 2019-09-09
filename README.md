@@ -78,12 +78,12 @@ all log records has 3 mandatory fields: `@timestamp`, `@message` and `@k8s`
 you can add additions fields such as loglevel, threadname etc to log record, by configuring log parsing as explained below. 
 
 
-how to parser a pod logs, is specified by adding annotation `logflow.io/conf` on pod.
+how to parser a pod logs, is specified by adding annotation `logflow.io/parser` on pod.
 
 to parse log using [regex](https://github.com/google/re2/wiki/Syntax) format:
 ```yaml
 annotations:
-  logflow.io/conf: |-
+  logflow.io/parser: |-
     format=/^\[(?P<timestamp>.*?)\] (?P<message>.*)$/
     timestamp_key=timestamp
     timestamp_layout=Mon Jan _2 15:04:05 MST 2006
@@ -105,7 +105,7 @@ annotations:
 to parse log using json format:
 ```yaml
 annotations:
-  logflow.io/conf: |-
+  logflow.io/parser: |-
     format=json
     timestamp_key=time
     timestamp_layout=Mon Jan _2 15:04:05 MST 2006
@@ -125,20 +125,18 @@ annotations:
 to ignore logs of a pod:
 ```yaml
 annotations:
-  logflow.io/conf: |-
+  logflow.io/parser: |-
     format=null
 ```
 
-If pod has multiple containers with different log format use `logflow.io/conf_{CONTAINER_NAME}` annotation
-to target specific container. For example to target container named `nginx`, use annotation `logflow.io/conf_nginx`
+If pod has multiple containers with different log format use `logflow.io/parser_CONTAINER` annotation
+to target specific container. For example to target container named `nginx`, use annotation `logflow.io/parser_nginx`
 
 NOTE:
 
-- logflow does not watch for changes to annotation `logflow.io/conf`
+- logflow does not watch for changes to annotation `logflow.io/parser`
 - logflow reads this annotation only when pod is deployed
 - so any changes to this annotation, after poid is deployed are not reflected in logflow
-
-if a pod has annotation `logflow.io/ignore`, then its logs are not exported.
 
 ## Performance
 
