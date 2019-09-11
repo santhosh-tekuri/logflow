@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package kubectl
+package main
 
 import (
 	"crypto/tls"
@@ -28,9 +28,9 @@ import (
 )
 
 var (
-	cl   *http.Client
-	base string
-	auth string
+	kubeClient *http.Client
+	base       string
+	auth       string
 )
 
 func init() {
@@ -52,7 +52,7 @@ func init() {
 	}
 	certPool := x509.NewCertPool()
 	certPool.AppendCertsFromPEM(b)
-	cl = &http.Client{
+	kubeClient = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				RootCAs: certPool,
@@ -61,9 +61,9 @@ func init() {
 	}
 }
 
-//go:generate jsonc -o kubectl_json.go Pod
+//go:generate jsonc -o kubectl_json.go pod
 
-type Pod struct {
+type pod struct {
 	Metadata struct {
 		Labels      map[string]interface{} `json:"labels"`
 		Annotations map[string]string      `json:"annotations"`
@@ -75,18 +75,18 @@ type Pod struct {
 
 var ErrNonKubernetes = errors.New("non kubernetes environment")
 
-func GetPod(ns, pod string) (Pod, error) {
-	if cl == nil {
-		return Pod{}, ErrNonKubernetes
+func getPod(ns, podName string) (pod, error) {
+	if kubeClient == nil {
+		return pod{}, ErrNonKubernetes
 	}
-	req, err := http.NewRequest(http.MethodGet, base+"/namespaces/"+ns+"/pods/"+pod, http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, base+"/namespaces/"+ns+"/pods/"+podName, http.NoBody)
 	if err != nil {
 		panic(err)
 	}
 	req.Header.Add("Authorization", auth)
-	resp, err := cl.Do(req)
+	resp, err := kubeClient.Do(req)
 	if err != nil {
-		return Pod{}, err
+		return pod{}, err
 	}
 	defer func() {
 		_, _ = io.Copy(os.Stdout, resp.Body)
@@ -94,12 +94,12 @@ func GetPod(ns, pod string) (Pod, error) {
 	}()
 	switch resp.StatusCode {
 	case http.StatusNotFound:
-		return Pod{}, nil
+		return pod{}, nil
 	case http.StatusOK:
-		var p Pod
+		var p pod
 		err = p.Unmarshal(json.NewReadDecoder(resp.Body))
 		return p, err
 	default:
-		return Pod{}, errors.New(resp.Status)
+		return pod{}, errors.New(resp.Status)
 	}
 }

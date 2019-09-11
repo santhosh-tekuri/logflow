@@ -25,7 +25,6 @@ import (
 	"strings"
 
 	"github.com/santhosh-tekuri/json"
-	"github.com/santhosh-tekuri/logflow/kubectl"
 )
 
 func getLogFile(dir string, ext int) string {
@@ -100,7 +99,7 @@ func fetchMetadata(logName string) map[string]interface{} {
 	if k8s == nil {
 		return nil
 	}
-	pod, err := kubectl.GetPod(k8s["namespace"].(string), k8s["pod"].(string))
+	pod, err := getPod(k8s["namespace"].(string), k8s["pod"].(string))
 	if err != nil {
 		warn(err)
 		return k8s
