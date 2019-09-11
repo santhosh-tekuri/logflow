@@ -26,6 +26,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -272,11 +273,11 @@ func parseExportConf(m map[string]string) error {
 		esAuth = "Basic " + base64.StdEncoding.EncodeToString([]byte(s))
 	}
 	if s, ok = m["elasticsearch.bulk_size"]; ok {
-		sz, err := parseSize(s)
+		mb, err := strconv.Atoi(s)
 		if err != nil {
 			return err
 		}
-		bulkLimit = int(sz)
+		bulkLimit = mb * 1024 * 1024
 		esClient.Transport.(*http.Transport).WriteBufferSize = bulkLimit
 	}
 	if s, ok = m["elasticsearch.index_name.prefix"]; ok {

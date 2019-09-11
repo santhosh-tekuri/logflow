@@ -17,13 +17,11 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -51,34 +49,6 @@ func readConf(r io.Reader) (map[string]string, error) {
 			return m, nil
 		}
 	}
-}
-
-func parseSize(s string) (int64, error) {
-	if len(s) == 0 {
-		return 0, errors.New("invalid size: " + s)
-	}
-	unit := int64(1)
-	switch s[len(s)-1] {
-	case 'K':
-		unit = 1024
-	case 'M':
-		unit = 1024 * 1024
-	case 'G':
-		unit = 1024 * 1024 * 1024
-	case 'T':
-		unit = 1024 * 1024 * 1024 * 1024
-	case 'P':
-		unit = 1024 * 1024 * 1024 * 1024 * 1024
-	case 'E':
-		unit = 1024 * 1024 * 1024 * 1024 * 1024 * 1024
-	default:
-		return 0, errors.New("invalid size: " + s)
-	}
-	sz, err := strconv.ParseInt(s[:len(s)-1], 10, 64)
-	if err != nil {
-		return 0, errors.New("invalid size: " + s)
-	}
-	return sz * unit, nil
 }
 
 // line ---
