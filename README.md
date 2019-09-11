@@ -1,7 +1,7 @@
 # Logflow - deveopment in progress
 
 Logflow exports kubernetes pod logs to Elasticsearch.  
-This project goal is use minimum cpu(3 to 5%) and minimum memory, in comparison to other solutions.  
+This project goal is use minimum cpu(1 to 2%) and minimum memory, in comparison to other solutions.  
 It is written in golang and is lightweight.
 
 ## How it works
