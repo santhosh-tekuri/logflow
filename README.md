@@ -61,7 +61,7 @@ deployment.apps/kibana created
 daemonset.apps/logflow created
 ```
 
-the logs are exported to elasticsearch indexes with format `logflow-yyyymmdd`.  
+the logs are exported to elasticsearch indexes with format `logflow-yyyy-mm-dd`.  
 all log records has 3 mandatory fields: `@timestamp`, `@message` and `@k8s`
 - `@timestamp` is in RFC3339 Nano format
 - `@message` is log message

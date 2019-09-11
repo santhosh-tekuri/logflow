@@ -53,9 +53,7 @@ func export(r *records) {
 			body.WriteString(`{"index":{"_index":"`)
 			body.WriteString(indexPrefix)
 			ts := rec.doc["@timestamp"].(string)
-			body.WriteString(ts[:4])   // year
-			body.WriteString(ts[5:7])  // month
-			body.WriteString(ts[8:10]) // date
+			body.WriteString(ts[:10]) // year-month-date
 			body.WriteString("\"}}\n")
 			if err := enc.Encode(rec.doc); err != nil {
 				panic(err)
