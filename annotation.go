@@ -163,10 +163,6 @@ func (a8n *annotation) unmarshal(format string) error {
 	if !ok {
 		return nil
 	}
-	if format == "null" {
-		a8n.format = "null"
-		return nil
-	}
 	a8n.tsKey = m["timestamp_key"]
 	a8n.tsLayout = m["timestamp_layout"]
 	if a8n.tsKey != "" && a8n.tsLayout == "" {

@@ -85,16 +85,17 @@ to parse log using [regex](https://github.com/google/re2/wiki/Syntax) format:
 annotations:
   logflow.io/parser: |-
     format=/^\[(?P<timestamp>.*?)\] (?P<message>.*)$/
+    message_key=message
     timestamp_key=timestamp
     timestamp_layout=Mon Jan _2 15:04:05 MST 2006
-    message_key=message
     multiline_start=/^\[(?P<time>.*?)\] /
 ```
 - regex must be enclosed in `/`
+
 - you can test your regex [here](https://play.golang.org/p/J7NJr_nTskK)
     - edit `line` and `expr` in the opened page and click `Run`
 - group names `?P<GROUPNAME>` in regex will map to log record field names
-- `message_key` allows to replace `@message` value in log record with the specified regex group match
+- `message_key` is mandatory. it allows to replace `@message` value in log record with the specified regex group match
 - `timestamp_key` allows to replace `@timestamp` value in log record with the specified regex group match
     - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
@@ -107,12 +108,12 @@ to parse log using json format:
 annotations:
   logflow.io/parser: |-
     format=json
+    message_key=message
     timestamp_key=time
     timestamp_layout=Mon Jan _2 15:04:05 MST 2006
-    message_key=message
 ```
 
-- `message_key` allows to replace `@message` value in log record with the specified json field value
+- `message_key` is mandatory. it allows to replace `@message` value in log record with the specified json field value
 - `timestamp_key` allows to replace `@timestamp` value in log record with the specified json field value
     - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
@@ -122,15 +123,18 @@ annotations:
   with object value to `error$obj`. this avoids mapping exceptions to large extent without additional manual 
   configuration
 
-to ignore logs of a pod:
+to exclude logs of a pod:
 ```yaml
 annotations:
-  logflow.io/parser: |-
-    format=null
+  logflow.io/exclude: "true"
 ```
 
-If pod has multiple containers with different log format use `logflow.io/parser_CONTAINER` annotation
-to target specific container. For example to target container named `nginx`, use annotation `logflow.io/parser_nginx`
+Note that the annotation value is boolean which can take a `true` or `false` and must be quoted.
+
+If pod has multiple containers with different log format use `logflow.io/parser-CONTAINER` annotation
+to target specific container. For example to target container named `nginx`, use annotation `logflow.io/parser-nginx`
+
+similarly to exclude logs from specific container use `logflow.io/exclude-CONTAINER` annotation
 
 NOTE:
 
