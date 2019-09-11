@@ -99,8 +99,9 @@ annotations:
 - `timestamp_key` allows to replace `@timestamp` value in log record with the specified regex group match
     - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
-- `multiline_start` is regexp pattern for start line of multiple lines. the loglines which do not match 
-   this regexp are treated as part of recent log message. note that regexp in `format` is matched only on the first line, not on complete multiline log message.
+- `multiline_start` is regexp pattern for start line of multiple lines. this is useful if log message can extend to more than one line.
+   the loglines which do not match. this regexp are treated as part of recent log message. note that regexp in `format` is matched only 
+   on the first line, not on complete multiline log message.
 
 
 to parse log using json format:

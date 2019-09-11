@@ -25,7 +25,7 @@ import (
 )
 
 type annotation struct {
-	format   interface{} // nil or "null" or "json" or *regexp.Regexp
+	format   interface{} // "json" or *regexp.Regexp
 	tsKey    string
 	tsLayout string
 	msgKey   string
