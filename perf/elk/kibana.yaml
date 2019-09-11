@@ -12,6 +12,7 @@ spec:
       labels:
         app: kibana
       annotations:
+        logflow.io/exclude: "true"
         fluentbit.io/exclude: "true"
     spec:
       containers:
