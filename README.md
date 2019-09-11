@@ -232,10 +232,10 @@ KiB Mem :  4039536 total,  2561628 free,   313312 used,  1164596 buff/cache
 KiB Swap:        0 total,        0 free,        0 used.  3481144 avail Mem
 
   PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
-13951 root      20   0  108572   8236   4648 S   3.5  0.4   0:00.51 logflow
+13951 root      20   0  108572   8236   4648 S   1.3  0.4   0:00.51 logflow
 ```
 
-you can see that `logflow` takes 3-5% cpu
+you can see that `logflow` takes 1-2% cpu
 
 NOTE: at startup it may take more cpu than above because of old logs, but after some time cpu will be low. 
 
@@ -329,6 +329,66 @@ service "kibana" deleted
 deployment.apps "elasticsearch" deleted
 deployment.apps "kibana" deleted
 daemonset.apps "fluentd" deleted
+```
+
+### fluent-bit
+
+now install fluent-bit and wait for pods:
+
+```shell script
+$ kubectl apply -k perf/fluent-bit/
+namespace/fluent-bit created
+serviceaccount/fluent-bit created
+clusterrole.rbac.authorization.k8s.io/fluent-bit-read created
+clusterrolebinding.rbac.authorization.k8s.io/fluent-bit-read created
+configmap/fluent-bit-config-8m7b4c5kth created
+service/elasticsearch created
+service/kibana created
+deployment.apps/elasticsearch created
+deployment.apps/kibana created
+daemonset.extensions/fluent-bit created
+```
+
+run counter deployment:
+
+```shell script
+$ kubectl apply -f perf/counter.yaml
+deployment.apps/counter created
+```
+
+to see cpu usage of fluent-bit, ssh to perf worker node and run `top` command, press `o` and type `COMMAND=fluent-bit`:
+
+```shell script
+$ top
+top - 13:32:17 up 16 min,  3 users,  load average: 11.36, 7.43, 3.41
+Tasks: 187 total,   8 running, 125 sleeping,   0 stopped,   2 zombie
+%Cpu(s): 29.0 us, 62.3 sy,  0.0 ni,  4.6 id,  2.0 wa,  0.0 hi,  2.1 si,  0.0 st
+KiB Mem :  4039644 total,   618804 free,  2076472 used,  1344368 buff/cache
+KiB Swap:        0 total,        0 free,        0 used.  1704044 avail Mem
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+ 8414 root      20   0  144884  10784   6580 R   4.3  0.3   0:11.85 fluent-bit
+```
+
+you can see that `fluent-bit` takes 4-5% cpu
+
+let us brigdown the setup:
+
+```shell script
+$ kubectl delete -f perf/counter.yaml
+deployment.apps "counter" deleted
+
+$ kubectl delete -k perf/fluent-bit
+namespace "fluent-bit" deleted
+serviceaccount "fluent-bit" deleted
+clusterrole.rbac.authorization.k8s.io "fluent-bit-read" deleted
+clusterrolebinding.rbac.authorization.k8s.io "fluent-bit-read" deleted
+configmap "fluent-bit-config-8m7b4c5kth" deleted
+service "elasticsearch" deleted
+service "kibana" deleted
+deployment.apps "elasticsearch" deleted
+deployment.apps "kibana" deleted
+daemonset.extensions "fluent-bit" deleted
 
 $ kubectl label nodes worker2 perf-
 node/worker2 labeled
