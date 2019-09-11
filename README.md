@@ -100,7 +100,7 @@ annotations:
     - `timestamp_layout` specified time format based on reference time "Mon Jan 2 15:04:05 -0700 MST 2006"
     - see [this](https://medium.com/@simplyianm/how-go-solves-date-and-time-formatting-8a932117c41c) to understand time_layout format
 - `multiline_start` is regexp pattern for start line of multiple lines. this is useful if log message can extend to more than one line.
-   the loglines which do not match. this regexp are treated as part of recent log message. note that regexp in `format` is matched only 
+   the loglines which do not match this regexp are treated as part of recent log message. note that regexp in `format` is matched only 
    on the first line, not on complete multiline log message.
 
 
@@ -141,12 +141,14 @@ NOTE:
 
 - logflow does not watch for changes to annotation `logflow.io/parser`
 - logflow reads this annotation only when pod is deployed
-- so any changes to this annotation, after poid is deployed are not reflected in logflow
+- so any changes to this annotation, after pod is deployed are not reflected
 
 ## Performance
 
-As per my tests, for 10k messages per second logflow takes 3 to 5% cpu, where as fluentd takes
-30 to 40% cpu.
+As per my tests, for 10k messages per second:
+- logflow takes 1 to 2% cpu
+- fluentd takes 30 to 40% cpu
+- fluent-bit takes 4-5% cpu
 
 Below are the instructions to run performance tests to compare logflow with fluentd.  
 
