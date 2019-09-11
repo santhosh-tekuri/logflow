@@ -147,11 +147,19 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 	return rec, nil
 }
 
+var errNotMap = errors.New("not map")
+
 func (a8n *annotation) jsonUnmarshal(msg string) (map[string]interface{}, error) {
 	a8n.deBuf = append(a8n.deBuf[:0], msg...)
 	a8n.de.Reset(a8n.deBuf)
 	m, err := a8n.de.Unmarshal()
-	return m.(map[string]interface{}), err
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := m.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, errNotMap
 }
 
 func (a8n *annotation) unmarshal(format string) error {
