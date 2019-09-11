@@ -16,7 +16,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"regexp"
 	"strings"
 	"time"
@@ -25,13 +24,14 @@ import (
 )
 
 type annotation struct {
-	format   interface{} // "json" or *regexp.Regexp
-	tsKey    string
-	tsLayout string
-	msgKey   string
-	multi    *regexp.Regexp
-	de       *json.ByteDecoder
-	deBuf    []byte
+	format        interface{} // "json" or *regexp.Regexp
+	tsKey         string
+	tsLayout      string
+	isRFC3339Nano bool
+	msgKey        string
+	multi         *regexp.Regexp
+	de            *json.ByteDecoder
+	deBuf         []byte
 }
 
 func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
@@ -47,11 +47,11 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 			}
 			for k, v := range rec {
 				if k == "msg" || k == "message" {
-					msg = fmt.Sprint(v)
+					msg = sprint(v)
 					delete(rec, k)
 				} else {
 					if k == "time" || k == "timestamp" || k == "ts" {
-						sv := fmt.Sprint(v)
+						sv := sprint(v)
 						if _, err := time.Parse(time.RFC3339Nano, sv); err == nil {
 							ts = sv
 							delete(rec, k)
@@ -85,12 +85,17 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 		}
 		for k, v := range rec {
 			if k == a8n.msgKey {
-				msg = fmt.Sprint(v)
+				msg = sprint(v)
 				delete(rec, k)
 			} else {
 				if k == a8n.tsKey {
-					if t, err := time.Parse(a8n.tsLayout, fmt.Sprint(v)); err == nil {
-						ts = t.Format(time.RFC3339Nano)
+					sv := sprint(v)
+					if t, err := time.Parse(a8n.tsLayout, sv); err == nil {
+						if a8n.isRFC3339Nano {
+							ts = sv
+						} else {
+							ts = t.Format(time.RFC3339Nano)
+						}
 						delete(rec, k)
 						continue
 					}
@@ -129,7 +134,11 @@ func (a8n *annotation) parse(raw rawLog) (map[string]interface{}, error) {
 				msg = g[i]
 			case a8n.tsKey:
 				if t, err := time.Parse(a8n.tsLayout, g[i]); err == nil {
-					ts = t.Format(time.RFC3339Nano)
+					if a8n.isRFC3339Nano {
+						ts = g[i]
+					} else {
+						ts = t.Format(time.RFC3339Nano)
+					}
 				} else {
 					rec[name] = g[i]
 				}
@@ -172,10 +181,14 @@ func (a8n *annotation) unmarshal(format string) error {
 		return nil
 	}
 	a8n.tsKey = m["timestamp_key"]
-	a8n.tsLayout = m["timestamp_layout"]
-	if a8n.tsKey != "" && a8n.tsLayout == "" {
-		return errors.New("timestamp_layout missing")
+	if a8n.tsKey != "" {
+		a8n.tsLayout = m["timestamp_layout"]
+		if a8n.tsLayout == "" {
+			return errors.New("timestamp_layout missing")
+		}
+		a8n.isRFC3339Nano = a8n.tsLayout == time.RFC3339Nano
 	}
+
 	a8n.msgKey = m["message_key"]
 	if a8n.msgKey == "" {
 		return errors.New("message_key missing")

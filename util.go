@@ -51,6 +51,13 @@ func readConf(r io.Reader) (map[string]string, error) {
 	}
 }
 
+func sprint(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return fmt.Sprint(v)
+}
+
 // line ---
 
 type line struct {
