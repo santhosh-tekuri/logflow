@@ -170,6 +170,10 @@ To use `json-file` logging driver create `/etc/docker/daemon.json` with below co
 }
 ```
 
+**NOTE:**  `max-file` in `/etc/docker/daemon.json` must be greater than `1`, if it is `1`, then
+`logflow` cannot detect log rotation(because docker trucates the file to rotate)
+
+
 clone this project
 
 select a worker node say `worker2` for peformance test and `perf` label:
