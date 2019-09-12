@@ -28,8 +28,8 @@ for arch in "${archs[@]}"; do
 done
 
 echo buildings manifests ----------------------
-docker manifest create --amend ${image} ${images[@]}
-docker manifest create --amend ${latest} ${images[@]}
+docker manifest create ${image} ${images[@]}
+docker manifest create ${latest} ${images[@]}
 for arch in "${archs[@]}"; do
   docker manifest annotate ${image} ${image}-${arch} --os linux --arch ${arch}
   docker manifest annotate ${latest} ${image}-${arch} --os linux --arch ${arch}
