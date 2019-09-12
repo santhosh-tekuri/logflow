@@ -16,7 +16,7 @@ ENTRYPOINT ["/logflow"]
 EOF
 trap "rm -f Dockerfile logflow" EXIT
 
-archs=(amd64 arm arm64 ppc64 ppc64le s390x)
+archs=(amd64 arm arm64 ppc64le s390x)
 declare -a images
 for arch in "${archs[@]}"; do
     echo bulding ${image}-${arch} ----------------------
