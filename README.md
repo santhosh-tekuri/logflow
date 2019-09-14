@@ -38,8 +38,10 @@ To use `json-file` logging driver create `/etc/docker/daemon.json` with below co
 }
 ```
 
-**NOTE:**  `max-file` in `/etc/docker/daemon.json` must be greater than `1`, if it is `1`, then
+**NOTE:**  
+- `max-file` in `/etc/docker/daemon.json` must be greater than `1`, if it is `1`, then
 `logflow` cannot detect log rotation(because docker trucates the file to rotate)
+- make sure `compress` in `/etc/docker/daemon.json` is `disabled` (by default it is disabled)
 
 clone this project, and edit `kustomize/logflow.conf`
 - update `elasticsearch.url`
