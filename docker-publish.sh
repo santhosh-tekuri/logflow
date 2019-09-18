@@ -7,6 +7,8 @@ if [[ $# -ne 1 ]]; then
 fi
 name=santhoshkt/logflow
 image=$name:$1
+minor=$name:${1:0:3}
+major=$name:${1:0:1}
 latest=$name:latest
 
 cat <<EOF > Dockerfile
@@ -29,12 +31,20 @@ done
 
 echo buildings manifests ----------------------
 docker manifest create ${image} ${images[@]}
+docker manifest create ${minor} ${images[@]}
+docker manifest create ${major} ${images[@]}
 docker manifest create ${latest} ${images[@]}
 for arch in "${archs[@]}"; do
   docker manifest annotate ${image} ${image}-${arch} --os linux --arch ${arch}
+  docker manifest annotate ${minor} ${image}-${arch} --os linux --arch ${arch}
+  docker manifest annotate ${major} ${image}-${arch} --os linux --arch ${arch}
   docker manifest annotate ${latest} ${image}-${arch} --os linux --arch ${arch}
 done
 docker manifest inspect ${image}
 docker manifest push --purge ${image}
+docker manifest inspect ${minor}
+docker manifest push --purge ${minor}
+docker manifest inspect ${major}
+docker manifest push --purge ${major}
 docker manifest inspect ${latest}
 docker manifest push --purge ${latest}
