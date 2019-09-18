@@ -8,9 +8,8 @@ fi
 name=santhoshkt/logflow
 image=$name:$1
 
-if ! docker manifest >/dev/null; then
-    echo Docker experimental cli features are not enabled
-    exit 1
+if ! docker manifest >/dev/null 2>&1 ; then
+    docker manifest
 fi
 
 cat <<EOF > Dockerfile
