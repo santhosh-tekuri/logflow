@@ -15,6 +15,6 @@ spec:
       containers:
         - name: counter
           image: busybox:1.31.0
-          args: [/bin/sh, -c, 'i=0; while true; do echo "this is message $i"; i=$((i+1)); sleep 0.001; done']
+          args: [/bin/sh, -c, 'i=1; while true; do echo "this is message $i"; i=$((i+1)); sleep 0.001; done']
       nodeSelector:
         perf: "true"
