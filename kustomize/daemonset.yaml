@@ -19,6 +19,9 @@ spec:
       containers:
       - name: logflow
         image: santhoshkt/logflow:1.0.0
+        env:
+          - name: GODEBUG
+            value: memprofilerate=0
         resources:
           limits:
             cpu: 0.1
