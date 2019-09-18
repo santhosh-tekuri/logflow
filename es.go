@@ -149,7 +149,7 @@ var (
 func bulkErrors(r io.Reader) ([]string, error) {
 	bulkDecoder.Reset(r)
 	var errors []string
-	err := json.UnmarshalObj("bulk", bulkDecoder, func(d json.Decoder, prop json.Token) (err error) {
+	err := json.DecodeObj("bulk", bulkDecoder, func(d json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("errors"):
 			var errors bool
@@ -158,16 +158,16 @@ func bulkErrors(r io.Reader) ([]string, error) {
 				return errStop
 			}
 		case prop.Eq("items"):
-			err = json.UnmarshalArr("items", d, func(d json.Decoder) error {
-				return json.UnmarshalObj("items[]", d, func(d json.Decoder, prop json.Token) (err error) {
-					return json.UnmarshalObj("index", d, func(d json.Decoder, prop json.Token) (err error) {
+			err = json.DecodeArr("items", d, func(d json.Decoder) error {
+				return json.DecodeObj("items[]", d, func(d json.Decoder, prop json.Token) (err error) {
+					return json.DecodeObj("index", d, func(d json.Decoder, prop json.Token) (err error) {
 						switch {
 						case prop.Eq("error"):
 							var b []byte
 							b, err = d.Marshal()
 							errors = append(errors, string(b))
 						case prop.Eq("_shards"):
-							return json.UnmarshalObj("_shards", d, func(d json.Decoder, prop json.Token) (err error) {
+							return json.DecodeObj("_shards", d, func(d json.Decoder, prop json.Token) (err error) {
 								switch {
 								case prop.Eq("successful"):
 									var i int

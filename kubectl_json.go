@@ -4,23 +4,23 @@ package main
 
 import "github.com/santhosh-tekuri/json"
 
-func (p *pod) Unmarshal(de json.Decoder) error {
-	return json.UnmarshalObj("pod", de, func(de json.Decoder, prop json.Token) (err error) {
+func (p *pod) DecodeJSON(de json.Decoder) error {
+	return json.DecodeObj("pod", de, func(de json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("metadata"):
-			err = json.UnmarshalObj("pod.Metadata", de, func(de json.Decoder, prop json.Token) (err error) {
+			err = json.DecodeObj("pod.Metadata", de, func(de json.Decoder, prop json.Token) (err error) {
 				switch {
 				case prop.Eq("labels"):
 					p.Metadata.Labels = make(map[string]interface{})
-					err = json.UnmarshalObj("pod.Metadata.Labels", de, func(de json.Decoder, prop json.Token) (err error) {
+					err = json.DecodeObj("pod.Metadata.Labels", de, func(de json.Decoder, prop json.Token) (err error) {
 						k, _ := prop.String("")
-						v, err := de.Unmarshal()
+						v, err := de.Decode()
 						p.Metadata.Labels[k] = v
 						return err
 					})
 				case prop.Eq("annotations"):
 					p.Metadata.Annotations = make(map[string]string)
-					err = json.UnmarshalObj("pod.Metadata.Annotations", de, func(de json.Decoder, prop json.Token) (err error) {
+					err = json.DecodeObj("pod.Metadata.Annotations", de, func(de json.Decoder, prop json.Token) (err error) {
 						k, _ := prop.String("")
 						v, err := de.Token().String("pod.Metadata.Annotations{}")
 						p.Metadata.Annotations[k] = v
@@ -32,10 +32,12 @@ func (p *pod) Unmarshal(de json.Decoder) error {
 				return
 			})
 		case prop.Eq("spec"):
-			err = json.UnmarshalObj("pod.Spec", de, func(de json.Decoder, prop json.Token) (err error) {
+			err = json.DecodeObj("pod.Spec", de, func(de json.Decoder, prop json.Token) (err error) {
 				switch {
 				case prop.Eq("nodeName"):
-					p.Spec.NodeName, err = de.Token().String("pod.Spec.NodeName")
+					if val := de.Token(); !val.Null() {
+						p.Spec.NodeName, err = val.String("pod.Spec.NodeName")
+					}
 				default:
 					err = de.Skip()
 				}

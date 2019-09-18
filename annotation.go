@@ -161,7 +161,7 @@ var errNotMap = errors.New("not map")
 func (a8n *annotation) jsonUnmarshal(msg string) (map[string]interface{}, error) {
 	a8n.deBuf = append(a8n.deBuf[:0], msg...)
 	a8n.de.Reset(a8n.deBuf)
-	m, err := a8n.de.Unmarshal()
+	m, err := a8n.de.Decode()
 	if err != nil {
 		return nil, err
 	}

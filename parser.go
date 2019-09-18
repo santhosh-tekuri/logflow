@@ -266,7 +266,7 @@ type rawLog struct {
 var nlSuffix = []byte(`\n"`)
 
 func (r *rawLog) unmarshal(de json.Decoder) error {
-	return json.UnmarshalObj("rawLog", de, func(de json.Decoder, prop json.Token) (err error) {
+	return json.DecodeObj("rawLog", de, func(de json.Decoder, prop json.Token) (err error) {
 		switch {
 		case prop.Eq("time"):
 			r.Time, err = de.Token().String("rawLog.Time")

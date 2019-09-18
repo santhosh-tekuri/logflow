@@ -97,7 +97,7 @@ func getPod(ns, podName string) (pod, error) {
 		return pod{}, nil
 	case http.StatusOK:
 		var p pod
-		err = p.Unmarshal(json.NewReadDecoder(resp.Body))
+		err = p.DecodeJSON(json.NewReadDecoder(resp.Body))
 		return p, err
 	default:
 		return pod{}, errors.New(resp.Status)
