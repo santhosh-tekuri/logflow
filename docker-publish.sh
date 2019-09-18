@@ -8,6 +8,10 @@ fi
 name=santhoshkt/logflow
 image=$name:$1
 
+if ! docker manifest --help >/dev/null; then
+    echo Docker experimental cli features are not enabled
+fi
+
 cat <<EOF > Dockerfile
 FROM scratch
 COPY logflow /
