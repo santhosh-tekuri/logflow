@@ -73,11 +73,11 @@ type pod struct {
 	} `json:"spec"`
 }
 
-var ErrNonKubernetes = errors.New("non kubernetes environment")
+var errNonKubernetes = errors.New("non kubernetes environment")
 
 func getPod(ns, podName string) (pod, error) {
 	if kubeClient == nil {
-		return pod{}, ErrNonKubernetes
+		return pod{}, errNonKubernetes
 	}
 	req, err := http.NewRequest(http.MethodGet, base+"/namespaces/"+ns+"/pods/"+podName, http.NoBody)
 	if err != nil {
