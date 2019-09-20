@@ -61,9 +61,11 @@ func export(r *records) {
 			}
 			body.WriteByte('\n')
 		}
-		if body.Len() > 0 && (err == errTimeout || body.Len() >= bulkLimit) {
-			if cancelled := bulkRetry(url, body.Bytes()); cancelled {
-				return
+		if err == errTimeout || body.Len() >= bulkLimit {
+			if body.Len() > 0 {
+				if cancelled := bulkRetry(url, body.Bytes()); cancelled {
+					return
+				}
 			}
 			r.commit()
 			body.Reset()
