@@ -156,8 +156,8 @@ func (cur *cursor) delete(i, ext int) (finished bool) {
 	}
 	for i < ext {
 		f := filepath.Join(cur.dir, fmt.Sprintf("log.%d", i))
-		info("deleting", f[len(qdir):])
 		if err := os.Remove(f); err == nil {
+			info(" deleted", f[len(qdir):])
 			numFilesMu.Lock()
 			numFiles[cur.dir]--
 			numFilesMu.Unlock()
